@@ -1,0 +1,119 @@
+/**
+ * Order routes — restaurant side.
+ *
+ * Note what is absent: there is no `PATCH /orders/:id` that accepts a status,
+ * and no route at all that accepts a price or a total. The only way an order
+ * moves is `POST /:id/transition`, which consults the state machine with the
+ * caller's role.
+ */
+
+import {
+  CASHIER_BOARD_STATUSES,
+  KITCHEN_BOARD_STATUSES,
+  objectIdSchema,
+  OrderStatus,
+  Role,
+  transitionOrderSchema,
+} from '@rw/shared'
+import { Router, type Request, type Response } from 'express'
+import { z } from 'zod'
+import { requireAuth } from '../../middleware/auth.js'
+import { requireRole, requireStaff } from '../../middleware/rbac.js'
+import { validate } from '../../middleware/validate.js'
+import * as orderService from './order.service.js'
+
+export const orderRouter: Router = Router()
+
+orderRouter.use(requireAuth, requireStaff)
+
+const idParamsSchema = z.object({ id: objectIdSchema })
+
+const listQuerySchema = z.object({
+  /** `board=kitchen|cashier` is a shortcut for the status set each screen shows. */
+  board: z.enum(['kitchen', 'cashier']).optional(),
+  status: z
+    .string()
+    .max(200)
+    .optional()
+    .transform((v) => (v ? v.split(',').map((s) => s.trim()) : undefined))
+    .refine(
+      (list) => !list || list.every((s) => (Object.values(OrderStatus) as string[]).includes(s)),
+      'unknown status',
+    ),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  skip: z.coerce.number().int().min(0).default(0),
+})
+
+type ListQuery = z.infer<typeof listQuerySchema>
+
+orderRouter.get(
+  '/',
+  validate({ query: listQuerySchema }),
+  async (req: Request & { validatedQuery?: ListQuery }, res: Response) => {
+    const query = req.validatedQuery!
+
+    const statuses =
+      query.status ??
+      (query.board === 'kitchen'
+        ? KITCHEN_BOARD_STATUSES
+        : query.board === 'cashier'
+          ? CASHIER_BOARD_STATUSES
+          : undefined)
+
+    const orders = await orderService.listOrders({
+      statuses,
+      from: query.from,
+      to: query.to,
+      limit: query.limit,
+      skip: query.skip,
+    })
+
+    // Boards poll this every few seconds; never let a proxy hold a stale copy.
+    res.setHeader('Cache-Control', 'no-store')
+    res.status(200).json({ orders, count: orders.length })
+  },
+)
+
+orderRouter.get(
+  '/:id',
+  validate({ params: idParamsSchema }),
+  async (req: Request, res: Response) => {
+    res.status(200).json({ order: await orderService.getOrder(String(req.params.id)) })
+  },
+)
+
+/** The single route that changes an order's status. */
+orderRouter.post(
+  '/:id/transition',
+  validate({ params: idParamsSchema, body: transitionOrderSchema }),
+  async (req: Request, res: Response) => {
+    const { to, reason, expectedCurrentStatus } = req.body as {
+      to: OrderStatus
+      reason?: string
+      expectedCurrentStatus?: string
+    }
+
+    const order = await orderService.transitionOrder(String(req.params.id), to, {
+      reason,
+      expectedCurrentStatus,
+    })
+
+    res.status(200).json({ order })
+  },
+)
+
+/**
+ * Cash confirmation. Cashier and above only — the kitchen must never be able to
+ * mark money as received.
+ */
+orderRouter.post(
+  '/:id/confirm-cash',
+  requireRole(Role.CASHIER, Role.MANAGER, Role.OWNER),
+  validate({ params: idParamsSchema }),
+  async (req: Request, res: Response) => {
+    const order = await orderService.confirmCashPayment(String(req.params.id))
+    res.status(200).json({ order })
+  },
+)

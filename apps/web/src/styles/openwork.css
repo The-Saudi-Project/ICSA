@@ -1,0 +1,152 @@
+/* ============================================================================
+   Openwork — Reimagined as elegant gradient lines.
+
+   The original triangular vents are replaced with sleek gradient dividers
+   that fit the dark glassmorphism aesthetic. The state band becomes an
+   animated gradient progress bar with glowing stage dots.
+
+   Zero images, all CSS.
+   ========================================================================= */
+
+.openwork {
+  --ow-height: 2px;
+  height: var(--ow-height);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    currentColor 15%,
+    currentColor 85%,
+    transparent 100%
+  );
+  opacity: 0.5;
+  border-radius: 1px;
+}
+
+.openwork--fine {
+  --ow-height: 1px;
+  opacity: 0.35;
+}
+
+.openwork--wall {
+  --ow-height: 3px;
+  opacity: 0.6;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-accent, currentColor) 20%,
+    var(--color-gold, currentColor) 50%,
+    var(--color-accent, currentColor) 80%,
+    transparent 100%
+  );
+}
+
+/* ----------------------------------------------------------------------------
+   The lit / unlit progress pair.
+
+   Two stacked bars: an unlit one at full width in faint border colour,
+   and a lit one clipped to however far progress has reached. The lit bar
+   has a gradient glow effect.
+   ------------------------------------------------------------------------- */
+
+.openwork-stack {
+  position: relative;
+  isolation: isolate;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.openwork-stack > .openwork {
+  height: 100%;
+  opacity: 1;
+  border-radius: 2px;
+}
+
+.openwork-stack > .openwork:first-child {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.openwork-stack > .openwork-lit {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  border-radius: 2px;
+  opacity: 1;
+  clip-path: inset(0 calc(100% - var(--ow-reach, 0%)) 0 0);
+  transition: clip-path 600ms var(--ease-out-strong);
+  background: linear-gradient(
+    90deg,
+    currentColor 0%,
+    currentColor 70%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px currentColor;
+}
+
+/* ----------------------------------------------------------------------------
+   Entry animations — the welcome moment.
+   Modernized with smooth reveals and glow effects.
+   ------------------------------------------------------------------------- */
+
+@keyframes ow-sweep {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+.ow-sweep {
+  animation: ow-sweep 800ms var(--ease-out-strong) forwards;
+}
+
+@keyframes ow-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+.ow-rise {
+  opacity: 0;
+  animation: ow-rise 500ms var(--ease-out-strong) forwards;
+}
+.ow-rise-1 {
+  animation-delay: 300ms;
+}
+.ow-rise-2 {
+  animation-delay: 400ms;
+}
+.ow-rise-3 {
+  animation-delay: 500ms;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ow-sweep {
+    animation: none;
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+  .ow-rise {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  .openwork-stack > .openwork-lit {
+    transition-duration: 0ms;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}

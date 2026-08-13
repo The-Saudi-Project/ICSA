@@ -1,0 +1,153 @@
+/**
+ * The customer-facing surface. No login, no account, no cookies.
+ *
+ * Only two things happen here in Step 4: a table token is exchanged for a
+ * session, and that session is kept alive. The menu and orders attach to this
+ * router in Steps 5 and 6, behind `requireTableSession`.
+ */
+
+import { createOrderSchema, exchangeTableTokenSchema, idempotencyKeySchema } from '@rw/shared'
+import { Router, type Request, type Response } from 'express'
+import { getContext } from '../../core/context.js'
+import { badRequest, notFound } from '../../core/errors.js'
+import * as orderService from '../orders/order.service.js'
+import { requireTableSession } from '../../middleware/tableSession.js'
+import { perTableRateLimit, tableSessionRateLimit } from '../../middleware/rateLimit.js'
+import { validate } from '../../middleware/validate.js'
+import * as menuService from '../menu/menu.service.js'
+import * as tableService from '../tables/table.service.js'
+
+export const publicRouter: Router = Router()
+
+/**
+ * Exchange the NFC/QR token for a session.
+ *
+ * This is the only endpoint that ever sees a table token. Everything afterwards
+ * uses the returned session token, and reads the table and restaurant from it.
+ */
+publicRouter.post(
+  '/table-sessions',
+  tableSessionRateLimit,
+  perTableRateLimit,
+  validate({ body: exchangeTableTokenSchema }),
+  async (req: Request, res: Response) => {
+    const { tableToken } = req.body as { tableToken: string }
+
+    const result = await tableService.exchangeTableToken(tableToken, {
+      ip: req.ip,
+      userAgent: req.header('user-agent'),
+    })
+
+    // A session token is a credential. Never let a proxy or the browser cache it.
+    res.setHeader('Cache-Control', 'no-store')
+    res.status(201).json(result)
+  },
+)
+
+/**
+ * Slide the session window and mint a fresh token.
+ * The phone calls this quietly while the customer is still at the table.
+ */
+publicRouter.post(
+  '/table-sessions/refresh',
+  requireTableSession,
+  async (_req: Request, res: Response) => {
+    const sessionId = getContext()?.tableSessionId
+    if (!sessionId) throw notFound('Table not found')
+
+    const result = await tableService.refreshTableSession(sessionId)
+
+    res.setHeader('Cache-Control', 'no-store')
+    res.status(200).json(result)
+  },
+)
+
+/**
+ * The menu for whichever restaurant the session belongs to.
+ *
+ * There is no restaurant parameter. The tenant comes from the session, so a
+ * customer cannot request another restaurant's menu however they craft the
+ * request.
+ *
+ * Cached privately for a short window and revalidated with an ETag: the menu is
+ * the page a customer hits first and re-opens throughout a meal, and it is the
+ * one request that must feel instant on a phone. `private` keeps it out of
+ * shared proxies, since one tenant's menu must never be served to another.
+ */
+publicRouter.get('/menu', requireTableSession, async (req: Request, res: Response) => {
+  const menu = await menuService.getPublicMenu()
+
+  const etag = `W/"menu-${menu.version}"`
+  res.setHeader('ETag', etag)
+  res.setHeader('Cache-Control', 'private, max-age=30, must-revalidate')
+
+  if (req.header('if-none-match') === etag) {
+    res.status(304).end()
+    return
+  }
+
+  res.status(200).json(menu)
+})
+
+/**
+ * Place an order.
+ *
+ * The body contains item ids, quantities and modifier keys. It does not contain
+ * a table, a restaurant, a price or a total — those come from the session and
+ * from the database. There is nothing here for a tampered client to change.
+ *
+ * `Idempotency-Key` is required, not optional: a phone on a weak connection
+ * retries, and without a key one tap plus one retry is two plates of food.
+ */
+publicRouter.post(
+  '/orders',
+  requireTableSession,
+  validate({ body: createOrderSchema }),
+  async (req: Request, res: Response) => {
+    const header = req.header('idempotency-key')
+    const parsed = idempotencyKeySchema.safeParse(header)
+    if (!parsed.success) {
+      throw badRequest(
+        'An Idempotency-Key header is required (8-100 characters, letters, digits, - or _).',
+      )
+    }
+
+    const { order, replayed } = await orderService.createOrder(req.body, parsed.data)
+
+    res.setHeader('Cache-Control', 'no-store')
+    // 200 rather than 201 on a replay: nothing was created this time.
+    res.status(replayed ? 200 : 201).json({ order, replayed })
+  },
+)
+
+/** Only orders belonging to the session presenting the request. */
+publicRouter.get('/orders', requireTableSession, async (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store')
+  res.status(200).json({ orders: await orderService.listOrdersForSession() })
+})
+
+publicRouter.get('/orders/:publicId', requireTableSession, async (req: Request, res: Response) => {
+  const order = await orderService.getOrderForSession(String(req.params.publicId))
+  res.setHeader('Cache-Control', 'no-store')
+  res.status(200).json({ order })
+})
+
+/** Customer cancellation, inside the configured window only. */
+publicRouter.post(
+  '/orders/:publicId/cancel',
+  requireTableSession,
+  async (req: Request, res: Response) => {
+    const order = await orderService.cancelOwnOrder(String(req.params.publicId))
+    res.setHeader('Cache-Control', 'no-store')
+    res.status(200).json({ order })
+  },
+)
+
+/** What the customer's phone is currently authorised for. Useful for debugging a tag. */
+publicRouter.get('/session', requireTableSession, (_req: Request, res: Response) => {
+  const context = getContext()
+  res.setHeader('Cache-Control', 'no-store')
+  res.status(200).json({
+    session: { tableId: context?.tableId, restaurantId: context?.restaurantId },
+  })
+})
