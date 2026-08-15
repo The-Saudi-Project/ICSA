@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { fetchOrderHistory, type StaffOrder } from '../../lib/staffApi.js'
 import { Price } from '../../components/Price.js'
 import { OrderStatus } from '@rw/shared'
-import { Button } from '../../components/ui/Button.js'
 import { Card } from '../../components/ui/Card.js'
 
 function OrderModal({ order, onClose }: { order: StaffOrder; onClose: () => void }) {
