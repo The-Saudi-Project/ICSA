@@ -26,6 +26,21 @@ export const platformRouter: Router = Router()
 
 platformRouter.use(requireAuth, requirePlatformAdmin)
 
+/**
+ * Nothing from this router may be cached either.
+ *
+ * Three routes here hand back a one-time password — tenant creation, owner
+ * reset, and staff creation — and none of them set a cache header, while their
+ * equivalents in `staff.routes.ts` always have. Everything else on this router
+ * is cross-tenant administrative data, which has no business sitting in any
+ * cache regardless. Router-level for the same reason as the tables router: a
+ * new route cannot forget it.
+ */
+platformRouter.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store')
+  next()
+})
+
 const listQuerySchema = z.object({
   status: z.enum([RestaurantStatus.ACTIVE, RestaurantStatus.SUSPENDED]).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),

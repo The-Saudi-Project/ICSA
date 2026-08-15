@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import {
   getPlatformRestaurant,
@@ -54,6 +54,8 @@ export default function PlatformTenantDetail() {
   const [staffDraft, setStaffDraft] = useState({ name: '', email: '', role: 'OWNER' })
   const [staffSecret, setStaffSecret] = useState<string | null>(null)
   const [staffError, setStaffError] = useState<string | null>(null)
+  // The Role label was a sibling with no htmlFor, so it named nothing.
+  const roleSelectId = useId()
 
   const openAddStaff = () => {
      setEditingStaffId(null)
@@ -261,8 +263,8 @@ export default function PlatformTenantDetail() {
                        />
                     )}
                     <div>
-                       <label className="block text-meta font-bold uppercase tracking-[0.12em] text-ink-soft mb-1.5">Role</label>
-                       <select className="w-full bg-surface-hover border border-border rounded-xl py-2.5 px-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash" value={staffDraft.role} onChange={e => setStaffDraft(s => ({ ...s, role: e.target.value }))}>
+                       <label htmlFor={roleSelectId} className="block text-meta font-bold uppercase tracking-[0.12em] text-ink-soft mb-1.5">Role</label>
+                       <select id={roleSelectId} className="w-full bg-surface-hover border border-border rounded-xl py-2.5 px-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash" value={staffDraft.role} onChange={e => setStaffDraft(s => ({ ...s, role: e.target.value }))}>
                           <option value="OWNER">Owner</option>
                           <option value="MANAGER">Manager</option>
                           <option value="CASHIER">Cashier</option>

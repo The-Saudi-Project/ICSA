@@ -31,6 +31,10 @@ export default function Platform() {
   
   const [showProvisionModal, setShowProvisionModal] = useState(false)
   const provisionTitleId = useId()
+  // Same defect the `Input` component had: a sibling <label> with no htmlFor is
+  // decoration. A screen reader announced these two as an unnamed combo box.
+  const typeSelectId = useId()
+  const parentSelectId = useId()
   const provisionDialogRef = useRef<HTMLDivElement>(null)
   const provisionOpenerRef = useRef<HTMLElement | null>(null)
 
@@ -365,8 +369,8 @@ export default function Platform() {
                 />
                 
                 <div>
-                  <label className="block text-meta font-bold uppercase tracking-[0.12em] text-ink-soft mb-1.5">Type</label>
-                  <select className="w-full bg-surface-hover border border-border rounded-xl py-2.5 px-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash transition-all shadow-sm" value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
+                  <label htmlFor={typeSelectId} className="block text-meta font-bold uppercase tracking-[0.12em] text-ink-soft mb-1.5">Type</label>
+                  <select id={typeSelectId} className="w-full bg-surface-hover border border-border rounded-xl py-2.5 px-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash transition-all shadow-sm" value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
                     <option value="SINGLE">Single Location</option>
                     <option value="CHAIN_MAIN">Brand HQ</option>
                     <option value="BRANCH">Chain Branch</option>
@@ -375,8 +379,8 @@ export default function Platform() {
 
                 {draft.type === 'BRANCH' ? (
                   <div className="animate-fade-in">
-                    <label className="block text-meta font-bold uppercase tracking-[0.12em] text-ink-soft mb-1.5">Parent Brand</label>
-                    <select className="w-full bg-surface-hover border border-border rounded-xl py-2.5 px-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash transition-all shadow-sm" value={draft.parentId} onChange={(e) => setDraft({ ...draft, parentId: e.target.value })}>
+                    <label htmlFor={parentSelectId} className="block text-meta font-bold uppercase tracking-[0.12em] text-ink-soft mb-1.5">Parent Brand</label>
+                    <select id={parentSelectId} className="w-full bg-surface-hover border border-border rounded-xl py-2.5 px-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash transition-all shadow-sm" value={draft.parentId} onChange={(e) => setDraft({ ...draft, parentId: e.target.value })}>
                       <option value="">Select HQ...</option>
                       {chainMains.map(hq => (
                         <option key={hq.id} value={hq.id}>{hq.name.en}</option>

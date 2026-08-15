@@ -14,7 +14,7 @@
 import { trusted } from 'mongoose'
 import { unscoped, tenantRepo } from '../../core/tenant.js'
 import { OrderModel } from '../orders/order.model.js'
-import { OrderStatus } from '@rw/shared'
+import { OrderStatus, UserStatus } from '@rw/shared'
 import { startOfBusinessDay } from '../orders/counter.model.js'
 import { UserModel } from '../users/user.model.js'
 import { RestaurantModel } from '../restaurants/restaurant.model.js'
@@ -31,7 +31,11 @@ const placedToday = () => ({ placedAt: trusted({ $gte: startOfBusinessDay() }) }
 export async function getRestaurantStats() {
   const [orders, staffCount] = await Promise.all([
     tenantRepo(OrderModel).find(placedToday()),
-    tenantRepo(UserModel).countDocuments(),
+    // Active only. Counting every row included people who had been disabled —
+    // and disabling is how this product removes someone from a team, so the
+    // number climbed with every departure and never fell. An owner reading
+    // "12 staff" after letting four go is being told something untrue.
+    tenantRepo(UserModel).countDocuments({ status: UserStatus.ACTIVE }),
   ])
 
   let todayRevenueHalalas = 0

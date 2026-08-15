@@ -920,6 +920,12 @@ all run and are green.
 | `<meta name="color-scheme" content="dark">` while shipping a light theme | Low (UI) | ✅ fixed | Native scrollbars, select and date popups, form-control defaults and the pre-paint background all rendered dark on a light page. Now `dark light`, with per-scheme `theme-color` |
 | **All of Zod shipped to every customer's phone** | Medium (performance) | ✅ fixed | The web app imported `OrderStatus`, `formatHalalas`, `Role` and `allowedNextStatuses` through the `@rw/shared` **barrel**, which re-exports `schemas/*` — and those import Zod. The result was a **72.5 kB / 19.8 kB gzipped** chunk loaded on the customer menu path to read enum constants, against a stated customer budget of 60 kB gzipped. Nothing in the browser validates with Zod; it is a server concern. Added `./enums`, `./money` and `./orderState` subpath exports and pointed the 10 web imports at them. That chunk is **gone** — replaced by three chunks totalling ~1 kB gzipped, and `grep` confirms no Zod in any bundle. **~18.8 kB gzipped off first load** |
 
+| Credential-bearing responses were cacheable | Medium | ✅ fixed | **A table URL *is* the credential** — anyone holding `/t/<token>` can order at that table. `GET /app/tables` returns one for every table in the restaurant and `GET /app/tables/export` returns the same set as a file, and **neither set any `Cache-Control` at all**, so a shared proxy or the browser's heuristic cache was free to keep a copy. Only the QR route had the header. Separately, all three platform routes that hand back a **one-time password** (tenant creation, owner reset, staff creation) set no cache header either, while their equivalents in `staff.routes.ts` always have. Both routers now set it at router level, so a route added later cannot omit it |
+| `TRUST_PROXY_HOPS` had to be measured by hand | Low | ✅ fixed | The value is a property of the deployment and cannot be known from code — but it can be *observed*, and telling an operator to patch in a `console.log` is a poor substitute. The first production request now logs the observed forwarded-chain depth, the configured value, and whether they agree. **Only the entry count is logged, never an address** — raw IPs are hashed everywhere else under PDPL and a diagnostic is not a reason to make an exception |
+| Dashboard "Staff Online" counted disabled accounts | Low | ✅ fixed | Two things wrong. It counted every user row, and **disabling is how this product removes someone from a team** — so the number climbed with every departure and never fell. It was also labelled "Staff Online" while nothing tracks presence. Now counts `status: ACTIVE` and is labelled "Active Staff". A dashboard figure that claims more than it measures is worse than no figure, because someone will make a staffing decision on it |
+| Three `<select>` labels named nothing | Medium (a11y) | ✅ fixed | The same defect found in the `Input` component, in three more places — Type and Parent Brand in the provisioning modal, Role in the tenant staff modal. Sibling `<label>` elements with no `htmlFor`, so screen readers announced an unnamed combo box. `MenuItemEditor` was already correct because `Field` wraps its children |
+| Two orphaned components left by the redesign | Low | ✅ removed | `StaffChrome.tsx` was imported by **nothing**, and `AdminShell`'s default export — a second header, sign-out and tab bar — by nothing either; both were superseded by `StaffLayout`. Not harmless: each carried its own copy of the sign-out flow and its own hard-coded route list, so they were a second, unreachable, silently drifting definition of how staff navigation works. `AdminShell`'s *named* helpers are still used by four screens and are untouched |
+
 ### Open
 
 | Bug | Severity | Status | Notes |
@@ -933,7 +939,8 @@ all run and are green.
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| **`TRUST_PROXY_HOPS` is a guess until measured** | **Medium** | Added 2026-08-15, defaulting to the previous hard-coded `1`. Production actually has two proxies — `vercel.json` rewrites `/api` onward to Render — so the real value is probably **2**. Too low and every request looks like it comes from the last proxy, so all IP rate limits share one bucket and a single attacker can exhaust the budget for every customer at once; too high and a forged `X-Forwarded-For` escapes the limiter entirely. **Action:** log `req.ips` once against real production traffic, count the entries, set the variable. Do not guess in either direction |
+| **`TRUST_PROXY_HOPS` still needs one confirming look at the logs** | Low | Defaults to the previous hard-coded `1`; production probably needs **2**, because `vercel.json` rewrites `/api` onward to Render. **The server now diagnoses this itself** — the first production request logs `proxy depth looks like N, but TRUST_PROXY_HOPS is M` when they disagree. **Action: read that one log line after the next deploy and set the variable if it disagrees.** Until then, IP rate limiting may be keyed on a proxy address rather than the customer, which collapses every limit into one shared bucket |
+| **A restaurant cannot configure itself** | Medium | No `/app/restaurant` router exists, so VAT rate, service charge, `kitchenStartsBeforePayment`, logo and address are fixed at their creation-time defaults forever. Not a bug — a missing feature that decides pricing behaviour, so it is the product owner's call. See §22 |
 | Rate limiting is per-process, in memory | Medium | Correct on one instance, wrong the moment there are two — each would count separately. Redis is the Phase 2 answer; until then do not scale the API horizontally |
 | The audit environment could not run the DB-backed suites | Medium | `fastdl.mongodb.org` is blocked by egress policy, so `mongodb-memory-server` cannot fetch `mongod`. The 202 security tests and 68 other DB tests were **not** executed on 2026-08-15. GitHub CI runs them on every push and remains the gate — check it is green before merging that work |
 | Tenant isolation regression as code grows | **Critical** | 4 defence layers + CI-blocking security suite |
@@ -1121,6 +1128,33 @@ Set billing alerts on every account that supports them.
 
 **Demo production also runs entirely on free tiers** — product-owner decision, 2026-08-09.
 
+### Built as a placeholder — the seam exists, the feature does not
+
+Found during the 2026-08-15 audit. Each of these is **deliberately incomplete**, not broken. They
+are listed so nobody mistakes a stub for a bug, or ships assuming they work.
+
+| Placeholder | What exists today | What is missing | Phase |
+|---|---|---|---|
+| **Card payment** | `PaymentMethod.CARD` in the enum; `PaymentStatus.FAILED`/`REFUNDED` reserved; `initialStatusFor()` throws `"Card payment is not available yet. Please choose cash."` | The provider, the hosted redirect, and the signature-verified webhook. Accepting a card order before a webhook can confirm it would mean trusting the browser, which the rules forbid | **2** |
+| **Order expiry** | `OrderStatus.EXPIRED` is a terminal state, `SYSTEM` is authorised to move orders into it, and it restocks correctly | **Nothing ever produces it.** No scheduler exists, so an unpaid `CASH_PENDING` order sits on the cashier board indefinitely. Needs a decision about *where* a job runs — Render's free tier has no cron | 2 (needs an architecture decision) |
+| **Customer order history** | `GET /public/orders` is built, tenant- and session-scoped, and tested; `fetchMyOrders()` is written in the client | No screen calls it. After placing a second order the first is unreachable except by browser back | 1.5 — small, but it is a new customer screen |
+| **Image deletion / retention** | `ImageProvider.deleteImage()` is on the interface and called nowhere that matters | Cloudinary's implementation deliberately logs and returns. A half-written delete that removes the wrong asset costs more than an orphaned file on a free tier | Before R2 |
+| **Cloudflare R2 image storage** | The whole `ImageProvider` seam exists so this is one new adapter file | The adapter. Cloudinary is the dev/demo choice; R2 charges no egress, which is the bill that matters once customers load menu images all day | Before production (§22) |
+| **Redis rate limiting** | `middleware/rateLimit.ts` is correct for exactly one instance | A shared store. **Do not scale the API horizontally before this** — each instance would count separately and the limits would silently multiply | **2** |
+| **OTP / phone verification** | `customerPhone` is validated as a Saudi mobile on the order schema and stored | Nothing sends or checks a code. The client never populates the field | **2** |
+| **Takeaway and pickup** | `OrderType.TAKEAWAY` / `PICKUP` in the enum; `settings.orderTypes` defaults to `[DINE_IN]` | Every flow assumes a table session, which is what proves *where* the customer is | **2** |
+| **Arabic / RTL** | Every user-visible string is bilingual in the schema and the editors capture `ar`; the frontend uses logical properties throughout so this is not a rewrite | The UI layer only ever renders `.en` | **2** (§22) |
+| **POS / accounting integration** | Nothing. The commercial pitch depends on it | Foodics / Qoyod adapters | **3** |
+
+### Missing outright — not a placeholder, no seam exists
+
+| Gap | Impact | Why it is not being built here |
+|---|---|---|
+| **A restaurant cannot change its own settings** | `settings.vatRatePercent`, `serviceChargePercent`, `kitchenStartsBeforePayment`, `tableSessionTtlMinutes`, `logoUrl`, `addressLine`, `defaultLocale` and `orderTypes` are **read** by pricing and ordering but are only ever written as schema defaults at tenant creation. There is no `/app/restaurant` router at all. So every restaurant runs on 15% VAT, no service charge, and cash-confirmed-before-kitchen, with no way to change any of it | This is new scope that decides **pricing and VAT behaviour**, which `CLAUDE.md` explicitly reserves for the product owner. It also needs its own audit actions (a VAT-rate change is money-relevant) and a decision about which of these an owner may set versus which the platform sets on their behalf. **Needs a product decision before it is built** |
+| **Kitchen staff cannot edit stock** | Recorded separately in §16 as an open product decision from 2026-08-12 | Same reason — the requested behaviour and the built location disagree |
+
+---
+
 ### Later phases / not scheduled
 
 Native mobile app · waiter app · loyalty · coupons · customer accounts · advanced analytics ·
@@ -1187,8 +1221,25 @@ shared tests and 44 DB-free API tests are green, and 12 new `csvExport` tests pl
 `TRUST_PROXY_HOPS` tests cover the two backend fixes in a form that needs no database. **Check
 GitHub CI is green before merging.**
 
-Full finding list with severities in §16; the `TRUST_PROXY_HOPS` action for the product owner is
-in §17.
+**Second pass, same day.** Six more fixes after a sweep for anything else fixable without a
+product decision: credential-bearing responses (every table URL, every one-time password) were
+served with **no cache headers at all** — now `no-store` at router level on both routers, so a
+new route cannot omit it; `TRUST_PROXY_HOPS` now diagnoses itself in the logs instead of asking
+an operator to measure by hand; the dashboard's "Staff Online" counted disabled accounts and
+measured no such thing; three more `<select>` labels named nothing; and two orphaned components
+from the redesign — `StaffChrome` and `AdminShell`'s default export, each carrying its own stale
+copy of the sign-out flow — were removed.
+
+**What is deliberately still a stub is now written down.** §22 gained two new tables: ten
+placeholders where the seam exists but the feature does not (card payment, order expiry, customer
+order history, image deletion, R2, Redis, OTP, takeaway, Arabic, POS), and two gaps where no seam
+exists at all. The important one: **a restaurant cannot change its own settings** — VAT rate,
+service charge and `kitchenStartsBeforePayment` are read everywhere but only ever written as
+defaults at creation, and there is no `/app/restaurant` router. That decides pricing behaviour,
+so it is the product owner's call, not an agent's.
+
+Full finding list with severities in §16; placeholders and gaps in §22; the one remaining
+`TRUST_PROXY_HOPS` action in §17.
 
 ---
 

@@ -18,6 +18,24 @@ export const tableRouter: Router = Router()
 
 tableRouter.use(requireAuth, requireRestaurantAdmin)
 
+/**
+ * Nothing from this router may be cached, anywhere, ever.
+ *
+ * **A table URL is the credential**, not a reference to one — anyone holding
+ * `/t/<token>` can order at that table. `GET /` returns one for every table in
+ * the restaurant and `GET /export` returns the same set as a file, and neither
+ * said so: with no `Cache-Control` at all, a shared proxy or the browser's own
+ * heuristic cache was free to keep a copy of every table credential in the
+ * restaurant. Only the QR route had been given the header.
+ *
+ * Applied to the router rather than to each handler, so a route added later
+ * cannot quietly omit it.
+ */
+tableRouter.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store')
+  next()
+})
+
 const idParamsSchema = z.object({ id: objectIdSchema })
 const qrQuerySchema = z.object({ format: z.enum(['png', 'svg']).default('png') })
 

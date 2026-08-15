@@ -1,77 +1,16 @@
 /**
- * The admin shell — dark glass layout with tab navigation.
- * Shared admin components (Field, buttons, etc.) updated to glass style.
+ * Shared admin building blocks — sections, fields and the button classes the
+ * three admin screens are assembled from.
+ *
+ * This file used to also export an `AdminShell` layout component with its own
+ * header, sign-out and tab bar. Nothing imported it: the redesign replaced that
+ * navigation with `StaffLayout`, and the old shell was left behind along with
+ * `StaffChrome`. Both were removed on 2026-08-15. They were not harmless —
+ * each carried its own copy of the sign-out flow and its own hard-coded route
+ * list, so they were a second, unreachable, silently drifting definition of how
+ * staff navigation works. The filename is kept so the four importers of the
+ * helpers below do not have to change.
  */
-
-import { NavLink, Outlet } from 'react-router'
-import { getStaffUser, logout } from '../../lib/staffApi.js'
-import { useNavigate } from 'react-router'
-
-const TABS = [
-  { to: '/admin/menu', label: 'Menu', icon: 'M4 6h16M4 12h16M4 18h7' },
-  { to: '/admin/tables', label: 'Tables', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
-  { to: '/admin/staff', label: 'Staff', icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
-]
-
-export default function AdminShell() {
-  const navigate = useNavigate()
-  const user = getStaffUser()
-
-  async function signOut() {
-    await logout()
-    void navigate('/staff/login', { replace: true })
-  }
-
-  return (
-    <div className="min-h-dvh bg-mesh-deep text-ink">
-      <header className="border-b border-border bg-ground/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-baseline justify-between gap-6 px-6 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
-          <h1 className="text-lead font-[680]">Restaurant Admin</h1>
-          <div className="flex items-center gap-3">
-            <NavLink to="/dashboard" className="pressable rounded-lg px-3 py-1.5 text-meta font-medium text-ink-soft hover:bg-surface hover:text-ink transition-colors">
-              Dashboard
-            </NavLink>
-            <NavLink to="/cashier" className="pressable rounded-lg px-3 py-1.5 text-meta font-medium text-accent hover:bg-accent-wash transition-colors">
-              Till
-            </NavLink>
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="pressable rounded-lg px-3 py-1.5 text-meta text-ink-soft hover:bg-surface transition-colors"
-            >
-              {user?.name ? `${user.name} · Sign out` : 'Sign out'}
-            </button>
-          </div>
-        </div>
-
-        <nav className="mx-auto flex max-w-5xl gap-1 px-4 pb-px">
-          {TABS.map((tab) => (
-            <NavLink
-              key={tab.to}
-              to={tab.to}
-              className={({ isActive }) =>
-                [
-                  'pressable flex items-center gap-2 rounded-t-xl px-4 py-2.5 text-body transition-all duration-200',
-                  isActive
-                    ? 'bg-accent-wash font-[600] text-accent border-b-2 border-accent'
-                    : 'text-ink-soft hover:text-ink hover:bg-surface',
-                ].join(' ')
-              }
-            >
-              {tab.label}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-6 pb-20">
-        <Outlet />
-      </main>
-    </div>
-  )
-}
-
-/* ── shared admin pieces ──────────────────────────────────────────────────── */
 
 export function AdminSection({
   title,
