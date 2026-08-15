@@ -63,7 +63,7 @@ function toOrderView(order: OrderDoc, includeHistory = false): OrderView {
     id: order._id.toString(),
     publicId: order.publicId,
     orderNumber: order.orderNumber,
-    invoiceNumber: order.invoiceNumber,
+    invoiceNumber: order.invoiceNumber ?? undefined,
     status: order.status,
     paymentMethod: order.paymentMethod,
     paymentStatus: order.paymentStatus,
