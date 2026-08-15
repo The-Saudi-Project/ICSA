@@ -252,24 +252,24 @@ export default function ItemDetail() {
       {/* Floating Bottom Action Bar */}
       <div className="fixed inset-x-0 bottom-0 z-30 pointer-events-none pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto max-w-2xl px-4 pb-4">
-          <div className="bg-ground/95 backdrop-blur-xl border border-border shadow-lg rounded-2xl p-4 flex items-center gap-4 pointer-events-auto animate-slide-up">
+          <div className="bg-ground/95 backdrop-blur-xl border border-border shadow-lg rounded-2xl p-3 sm:p-4 flex items-center gap-2 sm:gap-4 pointer-events-auto animate-slide-up">
             {/* Quantity stepper */}
-            <div className="flex items-center rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
+            <div className="flex items-center rounded-xl border border-border bg-surface overflow-hidden shadow-sm shrink-0">
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 disabled={quantity === 1}
                 aria-label="One fewer"
-                className="pressable flex items-center justify-center h-12 w-12 text-h2 disabled:text-border-strong disabled:bg-surface-hover transition-colors"
+                className="pressable flex items-center justify-center h-12 w-10 sm:w-12 text-h2 disabled:text-border-strong disabled:bg-surface-hover transition-colors"
               >
                 −
               </button>
-              <span className="tnum w-10 text-center text-body font-bold">{quantity}</span>
+              <span className="tnum w-8 sm:w-10 text-center text-body font-bold">{quantity}</span>
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.min(50, q + 1))}
                 aria-label="One more"
-                className="pressable flex items-center justify-center h-12 w-12 text-h2 transition-colors hover:bg-surface-hover"
+                className="pressable flex items-center justify-center h-12 w-10 sm:w-12 text-h2 transition-colors hover:bg-surface-hover"
               >
                 +
               </button>
@@ -284,9 +284,9 @@ export default function ItemDetail() {
               // server refuses these orders anyway; this stops the customer
               // building one it will refuse.
               disabled={item.isSoldOut || unsatisfied.length > 0}
-              className="flex-1 h-12 flex justify-between px-6"
+              className="flex-1 h-12 flex flex-row items-center justify-center sm:justify-between gap-1 sm:gap-2 px-2 sm:px-6 overflow-hidden"
             >
-              <span>
+              <span className="truncate whitespace-nowrap text-sm sm:text-base">
                 {item.isSoldOut
                   ? 'Sold out'
                   : unsatisfied.length > 0
@@ -294,7 +294,7 @@ export default function ItemDetail() {
                     : 'Add to Order'}
               </span>
               {!item.isSoldOut && unsatisfied.length === 0 ? (
-                <Price halalas={unitTotal * quantity} className="font-bold" />
+                <Price halalas={unitTotal * quantity} className="font-bold shrink-0 text-sm sm:text-base" />
               ) : null}
             </Button>
           </div>
