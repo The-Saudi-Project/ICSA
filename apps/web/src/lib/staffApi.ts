@@ -188,6 +188,7 @@ export interface StaffOrder {
   id: string
   publicId: string
   orderNumber: string
+  invoiceNumber?: string
   status: string
   paymentMethod: string
   paymentStatus: string
@@ -200,6 +201,24 @@ export interface StaffOrder {
 
 export const fetchBoard = (board: 'kitchen' | 'cashier') =>
   staffApi<{ orders: StaffOrder[]; count: number }>(`/app/orders?board=${board}`)
+
+export const fetchOrderHistory = (filter: {
+  status?: string
+  from?: Date
+  to?: Date
+  limit?: number
+  skip?: number
+} = {}) => {
+  const params = new URLSearchParams()
+  if (filter.status) params.set('status', filter.status)
+  if (filter.from) params.set('from', filter.from.toISOString())
+  if (filter.to) params.set('to', filter.to.toISOString())
+  if (filter.limit) params.set('limit', String(filter.limit))
+  if (filter.skip) params.set('skip', String(filter.skip))
+
+  const qs = params.toString()
+  return staffApi<{ orders: StaffOrder[]; count: number }>(`/app/orders${qs ? `?${qs}` : ''}`)
+}
 
 export const transitionOrder = (id: string, to: OrderStatus, expectedCurrentStatus?: string) =>
   staffApi<{ order: StaffOrder }>(`/app/orders/${id}/transition`, {

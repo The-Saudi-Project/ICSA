@@ -76,3 +76,20 @@ export async function nextOrderNumber(restaurantId: string, now: Date = new Date
 
   return String(counter.seq).padStart(3, '0')
 }
+
+/** Returns a permanent sequential invoice number for a restaurant: INV-00001 */
+export async function nextInvoiceNumber(restaurantId: string): Promise<string> {
+  const key = `invoice:${restaurantId}`
+
+  const counter = await CounterModel.findByIdAndUpdate(
+    key,
+    {
+      $inc: { seq: 1 },
+      // Set to never expire (essentially year 2099) since these are lifetime sequences
+      $setOnInsert: { expiresAt: new Date('2099-12-31T00:00:00.000Z') },
+    },
+    { new: true, upsert: true },
+  )
+
+  return `INV-${String(counter.seq).padStart(5, '0')}`
+}

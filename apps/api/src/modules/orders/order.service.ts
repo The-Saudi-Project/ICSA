@@ -31,7 +31,7 @@ import { requireTenantId, tenantRepo } from '../../core/tenant.js'
 import { AuditAction } from '../audit/auditLog.model.js'
 import { RestaurantModel } from '../restaurants/restaurant.model.js'
 import { TableModel } from '../tables/table.model.js'
-import { nextOrderNumber } from './counter.model.js'
+import { nextOrderNumber, nextInvoiceNumber } from './counter.model.js'
 import { IDEMPOTENCY_TTL_MS, IdempotencyKeyModel } from './idempotencyKey.model.js'
 import { OrderModel, type OrderDoc } from './order.model.js'
 import { priceOrder } from './pricing.js'
@@ -45,6 +45,7 @@ export interface OrderView {
   id: string
   publicId: string
   orderNumber: string
+  invoiceNumber?: string
   status: string
   paymentMethod: string
   paymentStatus: string
@@ -62,6 +63,7 @@ function toOrderView(order: OrderDoc, includeHistory = false): OrderView {
     id: order._id.toString(),
     publicId: order.publicId,
     orderNumber: order.orderNumber,
+    invoiceNumber: order.invoiceNumber,
     status: order.status,
     paymentMethod: order.paymentMethod,
     paymentStatus: order.paymentStatus,
@@ -201,9 +203,11 @@ export async function createOrder(
     )
 
     const orderNumber = await nextOrderNumber(restaurantId)
+    const invoiceNumber = await nextInvoiceNumber(restaurantId)
 
     const order = await tenantRepo(OrderModel).create({
       orderNumber,
+      invoiceNumber,
       // Read from the session. There is no field in the request for either.
       tableId: context.tableId,
       tableSessionId: context.tableSessionId,
@@ -239,6 +243,7 @@ export async function createOrder(
       targetId: order._id.toString(),
       metadata: {
         orderNumber,
+        invoiceNumber,
         tableLabel: table?.label,
         grandTotalHalalas: priced.totals.grandTotalHalalas,
         itemCount: priced.items.length,

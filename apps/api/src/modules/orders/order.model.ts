@@ -77,6 +77,8 @@ const orderSchema = new Schema(
     publicId: { type: String, required: true, unique: true, default: () => generatePublicId() },
     /** Short human-readable number, unique per restaurant per day. For shouting across a kitchen. */
     orderNumber: { type: String, required: true },
+    /** Permanent sequential invoice number across the lifetime of the restaurant. */
+    invoiceNumber: { type: String },
 
     type: { type: String, enum: Object.values(OrderType), default: OrderType.DINE_IN },
 

@@ -15,6 +15,7 @@ interface NavItem {
 
 const RESTAURANT_NAV: NavItem[] = [
   { to: '/dashboard', label: 'Overview', icon: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' },
+  { to: '/admin/history', label: 'Order History', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
   { to: '/admin/menu', label: 'Menu Editor', icon: 'M4 6h16M4 12h16M4 18h7' },
   { to: '/admin/tables', label: 'Tables & QR', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
   { to: '/admin/staff', label: 'Staff Directory', icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },

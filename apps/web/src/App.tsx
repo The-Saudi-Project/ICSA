@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import('./routes/staff/Dashboard.js'))
 const Kitchen = lazy(() => import('./routes/staff/Kitchen.js'))
 const Cashier = lazy(() => import('./routes/staff/Cashier.js'))
 const AdminMenu = lazy(() => import('./routes/staff/AdminMenu.js'))
+const AdminHistory = lazy(() => import('./routes/staff/AdminHistory.js'))
 const AdminTables = lazy(() => import('./routes/staff/AdminTables.js'))
 const AdminStaff = lazy(() => import('./routes/staff/AdminStaff.js'))
 const Platform = lazy(() => import('./routes/staff/Platform.js'))
@@ -59,6 +60,7 @@ export default function App() {
               <Route path="/admin">
                 <Route index element={<Navigate to="menu" replace />} />
                 <Route path="menu" element={<Suspense fallback={<Fallback />}><AdminMenu /></Suspense>} />
+                <Route path="history" element={<Suspense fallback={<Fallback />}><AdminHistory /></Suspense>} />
                 <Route path="tables" element={<Suspense fallback={<Fallback />}><AdminTables /></Suspense>} />
                 <Route path="staff" element={<Suspense fallback={<Fallback />}><AdminStaff /></Suspense>} />
               </Route>

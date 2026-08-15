@@ -184,6 +184,7 @@ export interface OrderLine {
 export interface CustomerOrder {
   publicId: string
   orderNumber: string
+  invoiceNumber?: string
   status: string
   paymentMethod: string
   paymentStatus: string
