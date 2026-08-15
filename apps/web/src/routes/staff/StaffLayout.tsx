@@ -36,6 +36,7 @@ export default function StaffLayout() {
   const location = useLocation()
   const user = getStaffUser()
   const [profileOpen, setProfileOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { theme, setTheme } = useTheme()
 
   const isPlatformAdmin = user?.role === 'PLATFORM_ADMIN'
@@ -176,15 +177,98 @@ export default function StaffLayout() {
         </div>
       </aside>
 
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setMobileMenuOpen(false)} />
+          <aside className="w-[280px] glass border-r border-border flex flex-col h-full bg-ground relative shadow-2xl animate-slide-right">
+             <div className="p-4 border-b border-border flex justify-between items-center">
+               <div className="flex items-center gap-3">
+                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent-bright flex items-center justify-center text-white shadow-lg">
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                 </div>
+                 <h1 className="text-h3 font-black text-ink tracking-tight">OS <span className="font-medium text-ink-soft">Admin</span></h1>
+               </div>
+               <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-ink-soft hover:bg-surface-hover" aria-label="Close menu">
+                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+               </button>
+             </div>
+             
+             <div className="flex-1 overflow-y-auto py-8 px-4">
+                {navSection1.length > 0 ? (
+                  <div className="mb-10">
+                    <h2 className="px-3 text-caption font-bold text-ink-faint uppercase tracking-widest mb-4">{section1Title}</h2>
+                    <nav className="space-y-1.5">
+                      {navSection1.map(item => {
+                        const isActive = item.end
+                          ? location.pathname === item.to
+                          : location.pathname.startsWith(item.to)
+                        return (
+                          <NavLink
+                            key={item.to}
+                            to={item.to}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 font-semibold text-small ${
+                              isActive
+                                ? 'bg-accent-wash text-accent shadow-sm border border-accent/20'
+                                : 'text-ink-soft hover:bg-surface-hover hover:text-ink'
+                            }`}
+                          >
+                            <svg className="w-5 h-5 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                               <path d={item.icon} />
+                            </svg>
+                            {item.label}
+                          </NavLink>
+                        )
+                      })}
+                    </nav>
+                  </div>
+                ) : null}
+
+                {navSection2.length > 0 ? (
+                  <div>
+                    <h2 className="px-3 text-caption font-bold text-ink-faint uppercase tracking-widest mb-4">{section2Title}</h2>
+                    <nav className="space-y-1.5">
+                      {navSection2.map(item => {
+                        const isActive = location.pathname === item.to
+                        return (
+                          <NavLink
+                            key={item.to}
+                            to={item.to}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 font-semibold text-small ${
+                              isActive
+                                ? 'bg-accent-wash text-accent shadow-sm border border-accent/20'
+                                : 'text-ink-soft hover:bg-surface-hover hover:text-ink'
+                            }`}
+                          >
+                            <svg className="w-5 h-5 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                               <path d={item.icon} />
+                            </svg>
+                            {item.label}
+                          </NavLink>
+                        )
+                      })}
+                    </nav>
+                  </div>
+                ) : null}
+             </div>
+          </aside>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-dvh overflow-hidden bg-transparent">
         {/* Mobile Header */}
         <header className="md:hidden border-b border-border glass rounded-none flex items-center justify-between px-4 py-3 z-20 transition-colors duration-300">
-           <div className="flex items-center gap-2">
-             <div className="w-6 h-6 rounded bg-gradient-to-br from-accent to-accent-bright flex items-center justify-center text-white">
+           <div className="flex items-center gap-3">
+             <button onClick={() => setMobileMenuOpen(true)} className="w-8 h-8 rounded-lg flex items-center justify-center text-ink hover:bg-surface-hover -ml-2" aria-label="Open navigation menu">
+               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+             </button>
+             <div className="w-6 h-6 rounded bg-gradient-to-br from-accent to-accent-bright flex items-center justify-center text-white shrink-0">
                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
              </div>
-             <h1 className="text-body font-bold text-ink">OS Admin</h1>
+             <h1 className="text-body font-bold text-ink truncate">OS Admin</h1>
            </div>
            <div className="flex items-center gap-2">
              <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="w-8 h-8 rounded-full bg-surface-strong flex items-center justify-center text-ink-soft">

@@ -51,6 +51,7 @@ export default function AdminStaff() {
   const [draft, setDraft] = useState({ name: '', email: '', role: Role.CASHIER as string })
   const [secret, setSecret] = useState<{ label: string; value: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedStaff, setSelectedStaff] = useState<AdminStaffMember | null>(null)
 
   const add = useMutation({
     mutationFn: () =>
@@ -159,9 +160,10 @@ export default function AdminStaff() {
       <AdminSection title="Team">
         {isPending ? <p className="py-6 text-body text-ink-soft">Loading…</p> : null}
 
-        <Card variant="glass" className="overflow-hidden border-border/40 p-0">
-          <table className="w-full">
-            <thead>
+        <Card variant="glass" className="hidden md:block overflow-hidden border-border/40 p-0">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full whitespace-nowrap">
+              <thead>
               <tr className="border-b border-border/50 bg-surface-strong/30 text-small font-bold text-ink-soft uppercase tracking-wider">
                 <th className="py-4 px-6 text-start">Name</th>
                 <th className="py-4 px-6 text-start">Role</th>
@@ -201,12 +203,12 @@ export default function AdminStaff() {
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <div className="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity flex-nowrap">
                         <button
                           type="button"
                           onClick={() => reset.mutate(person)}
                           disabled={reset.isPending || disabled}
-                          className={`${quietButtonClass} !py-1.5`}
+                          className={`${quietButtonClass} !py-1.5 shrink-0`}
                         >
                           Reset Password
                         </button>
@@ -219,7 +221,7 @@ export default function AdminStaff() {
                               status: disabled ? 'ACTIVE' : 'DISABLED',
                             })
                           }
-                          className={`${quietButtonClass} !py-1.5 ${disabled ? 'text-status-success' : 'text-status-danger'}`}
+                          className={`${quietButtonClass} !py-1.5 shrink-0 ${disabled ? 'text-status-success' : 'text-status-danger'}`}
                           title={isMe ? 'You cannot disable your own account' : undefined}
                         >
                           {disabled ? 'Re-enable' : 'Disable'}
@@ -230,9 +232,108 @@ export default function AdminStaff() {
                 )
               })}
             </tbody>
-          </table>
+            </table>
+          </div>
         </Card>
+
+        {/* Mobile List View */}
+        <div className="md:hidden flex flex-col gap-3">
+          {data?.staff.map((person) => {
+            const isMe = person.id === me?.id
+            const disabled = person.status === 'DISABLED'
+
+            return (
+              <Card key={person.id} variant="glass" className={`p-4 flex items-center justify-between border-border/40 ${disabled ? 'opacity-60' : ''}`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-surface-strong to-border flex items-center justify-center shrink-0 border border-border/50 text-ink font-bold shadow-sm">
+                    {person.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className={`text-body font-bold text-ink ${disabled ? 'line-through' : ''}`}>
+                      {person.name}
+                      {isMe ? <span className="ml-2 rounded-full bg-accent-wash px-2 py-0.5 text-[10px] font-bold text-accent uppercase tracking-widest shadow-sm">You</span> : null}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 shadow-sm uppercase tracking-wider ${ROLE_COLOR[person.role] ?? 'bg-surface text-ink-soft ring-border'}`}>
+                        {person.role}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedStaff(person)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-strong text-ink-soft hover:text-ink hover:bg-surface-hover transition-colors shrink-0"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                </button>
+              </Card>
+            )
+          })}
+          {data?.staff.length === 0 ? (
+            <div className="py-10 text-center glass rounded-xl border border-border/40">
+              <p className="text-body font-medium text-ink-soft">No staff found.</p>
+            </div>
+          ) : null}
+        </div>
       </AdminSection>
+
+      {/* Mobile Action Modal */}
+      {selectedStaff && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center md:hidden">
+          <div className="absolute inset-0 bg-ground/80 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedStaff(null)}></div>
+          <div className="relative z-10 w-full max-w-sm bg-surface rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl animate-slide-up border border-border">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-h4 font-bold text-ink">{selectedStaff.name}</h3>
+                <p className="text-small text-ink-soft mt-1">{selectedStaff.email}</p>
+                {selectedStaff.mustChangePassword && selectedStaff.status !== 'DISABLED' ? (
+                  <p className="text-small font-semibold text-status-warning mt-2 flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+                    Needs password reset
+                  </p>
+                ) : null}
+              </div>
+              <button onClick={() => setSelectedStaff(null)} className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => {
+                  reset.mutate(selectedStaff)
+                  setSelectedStaff(null)
+                }}
+                disabled={reset.isPending || selectedStaff.status === 'DISABLED'}
+                className="w-full py-3 px-4 rounded-xl font-bold bg-surface-strong text-ink hover:bg-surface-hover transition-colors flex items-center justify-center gap-2"
+              >
+                Reset Password
+              </button>
+              
+              <button
+                type="button"
+                disabled={selectedStaff.id === me?.id || setStatus.isPending}
+                onClick={() => {
+                  setStatus.mutate({
+                    person: selectedStaff,
+                    status: selectedStaff.status === 'DISABLED' ? 'ACTIVE' : 'DISABLED',
+                  })
+                  setSelectedStaff(null)
+                }}
+                className={`w-full py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
+                  selectedStaff.status === 'DISABLED'
+                    ? 'bg-status-success/10 text-status-success hover:bg-status-success/20'
+                    : 'bg-status-danger/10 text-status-danger hover:bg-status-danger/20'
+                }`}
+              >
+                {selectedStaff.status === 'DISABLED' ? 'Re-enable Account' : 'Disable Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -18,7 +18,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto relative animate-fade-in pb-12 pt-16">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 relative animate-fade-in pb-12 pt-16">
       {/* Decorative Background Orbs for Glassmorphism */}
       <div className="absolute top-[0%] left-[10%] w-96 h-96 bg-accent/15 blur-[120px] rounded-full pointer-events-none mix-blend-screen" />
       <div className="absolute top-[20%] right-[-5%] w-80 h-80 bg-gold/10 blur-[100px] rounded-full pointer-events-none mix-blend-screen" />

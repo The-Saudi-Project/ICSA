@@ -187,12 +187,14 @@ export default function Cart() {
               variant="primary"
               onClick={() => void submit()}
               isLoading={placing}
-              className="w-full h-14 flex items-center justify-between px-6 text-lead shadow-lg"
+              className="w-full h-14 px-6 text-lead shadow-lg"
             >
-              <span>
-                {placing ? 'Placing your order…' : 'Place Order'}
-              </span>
-              {!placing && <Price halalas={cartTotal(cart)} className="font-bold" />}
+              <div className="w-full flex items-center justify-between">
+                <span>
+                  {placing ? 'Placing your order…' : 'Place Order'}
+                </span>
+                {!placing && <Price halalas={cartTotal(cart)} className="font-bold" />}
+              </div>
             </Button>
           </div>
         </div>

@@ -46,6 +46,7 @@ export default function AdminMenu() {
   const [newCategoryAr, setNewCategoryAr] = useState('')
   const [editor, setEditor] = useState<EditorState>({ open: false })
   const [editingCategory, setEditingCategory] = useState<AdminCategory | null>(null)
+  const [selectedItem, setSelectedItem] = useState<AdminMenuItem | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [editorError, setEditorError] = useState<string | null>(null)
 
@@ -228,8 +229,9 @@ export default function AdminMenu() {
             />
           ) : null}
 
-          <Card variant="glass" className="overflow-hidden border-border/40 p-0">
-            <table className="w-full">
+          <Card variant="glass" className="hidden md:block overflow-hidden border-border/40 p-0">
+            <div className="overflow-x-auto w-full">
+              <table className="w-full whitespace-nowrap">
               <thead>
                 <tr className="border-b border-border/50 bg-surface-strong/30 text-small font-bold text-ink-soft uppercase tracking-wider">
                   <th className="py-4 px-6 text-start">Item</th>
@@ -304,11 +306,128 @@ export default function AdminMenu() {
                     </td>
                   </tr>
                 ) : null}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
           </Card>
+
+          {/* Mobile List View */}
+          <div className="md:hidden flex flex-col gap-3">
+            {(byCategory.get(category.id) ?? []).map((item) => (
+              <Card key={item.id} variant="glass" className="p-4 flex items-center justify-between border-border/40">
+                <div className="flex items-start gap-4 min-w-0">
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt=""
+                      className="size-14 shrink-0 rounded-xl object-cover ring-1 ring-border"
+                    />
+                  ) : (
+                    <div className="size-14 shrink-0 rounded-xl bg-surface-strong border border-border/50 flex items-center justify-center text-ink-faint">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    </div>
+                  )}
+                  <div className="min-w-0 py-1">
+                    <p className="text-body font-bold text-ink truncate">{item.name.en}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-small font-bold text-gold"><Price halalas={item.priceHalalas} size="meta" /></span>
+                      {!item.isAvailable ? (
+                        <span className="rounded-md bg-status-danger/10 px-2 py-0.5 text-[10px] font-bold text-status-danger ring-1 ring-status-danger/20 uppercase tracking-widest">Sold Out</span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedItem(item)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-strong text-ink-soft hover:text-ink hover:bg-surface-hover transition-colors shrink-0"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                </button>
+              </Card>
+            ))}
+            {(byCategory.get(category.id) ?? []).length === 0 ? (
+              <div className="py-10 text-center glass rounded-xl border border-border/40">
+                <p className="text-body font-medium text-ink-soft">Nothing in this category yet.</p>
+              </div>
+            ) : null}
+          </div>
         </AdminSection>
       ))}
+
+      {/* Mobile Action Modal */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center md:hidden">
+          <div className="absolute inset-0 bg-ground/80 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedItem(null)}></div>
+          <div className="relative z-10 w-full max-w-sm bg-surface rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl animate-slide-up border border-border">
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-4 min-w-0">
+                {selectedItem.imageUrl ? (
+                  <img
+                    src={selectedItem.imageUrl}
+                    alt=""
+                    className="size-16 shrink-0 rounded-2xl object-cover ring-1 ring-border shadow-sm"
+                  />
+                ) : (
+                  <div className="size-16 shrink-0 rounded-2xl bg-surface-strong border border-border/50 flex items-center justify-center text-ink-faint shadow-sm">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h3 className="text-h4 font-bold text-ink truncate">{selectedItem.name.en}</h3>
+                  {selectedItem.name.ar ? (
+                    <p className="text-small text-ink-soft truncate mt-0.5" dir="rtl" lang="ar">{selectedItem.name.ar}</p>
+                  ) : null}
+                  <div className="mt-1">
+                    <ItemBadges item={selectedItem} />
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setSelectedItem(null)} className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-surface-strong border border-border/50">
+                <span className="text-small font-bold text-ink-soft uppercase tracking-wider">Price</span>
+                <PriceCell
+                  item={selectedItem}
+                  onSave={(sar) => reprice.mutate({ id: selectedItem.id, sar })}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  toggle.mutate({ item: selectedItem })
+                  setSelectedItem(null)
+                }}
+                className={`w-full py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
+                  selectedItem.isAvailable
+                    ? 'bg-status-success/10 text-status-success hover:bg-status-success/20'
+                    : 'bg-status-danger/10 text-status-danger hover:bg-status-danger/20'
+                }`}
+              >
+                {selectedItem.isAvailable ? 'Available (Tap to mark Sold Out)' : 'Sold Out (Tap to make Available)'}
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  openEditor(selectedItem)
+                  setSelectedItem(null)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className="w-full py-3 px-4 rounded-xl font-bold bg-surface-strong text-ink hover:bg-surface-hover transition-colors flex items-center justify-center gap-2"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Full Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

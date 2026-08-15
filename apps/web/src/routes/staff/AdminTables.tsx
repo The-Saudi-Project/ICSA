@@ -124,19 +124,19 @@ function EditTableRow({
         </span>
       </td>
       <td className="py-3 px-6">
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 flex-nowrap">
           <button
             type="button"
             onClick={() => save.mutate()}
             disabled={!label.trim() || save.isPending}
-            className={`${primaryButtonClass} !py-1.5 !px-4 !text-small`}
+            className={`${primaryButtonClass} !py-1.5 !px-4 !text-small shrink-0`}
           >
             {save.isPending ? 'Saving…' : 'Save'}
           </button>
           <button
             type="button"
             onClick={onDone}
-            className={`${quietButtonClass} !py-1.5`}
+            className={`${quietButtonClass} !py-1.5 shrink-0`}
           >
             Cancel
           </button>
@@ -161,6 +161,7 @@ export default function AdminTables() {
   const [confirmDelete, setConfirmDelete] = useState<AdminTable | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showQr, setShowQr] = useState<AdminTable | null>(null)
+  const [selectedTable, setSelectedTable] = useState<AdminTable | null>(null)
   const qr = useTableQr(showQr?.id)
 
   const add = useMutation({
@@ -251,9 +252,10 @@ export default function AdminTables() {
       >
         {isPending ? <p className="py-6 text-body text-ink-soft">Loading…</p> : null}
 
-        <Card variant="glass" className="overflow-hidden border-border/40 p-0">
-          <table className="w-full">
-            <thead>
+        <Card variant="glass" className="hidden md:block overflow-hidden border-border/40 p-0">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full whitespace-nowrap">
+              <thead>
               <tr className="border-b border-border/50 bg-surface-strong/30 text-small font-bold text-ink-soft uppercase tracking-wider">
                 <th className="py-4 px-6 text-start">Table</th>
                 <th className="py-4 px-6 text-start">Zone</th>
@@ -348,8 +350,43 @@ export default function AdminTables() {
                 </tr>
               ) : null}
             </tbody>
-          </table>
+            </table>
+          </div>
         </Card>
+
+        {/* Mobile List View */}
+        <div className="md:hidden flex flex-col gap-3">
+          {data?.tables.map((table) => (
+            <Card key={table.id} variant="glass" className="p-4 flex items-center justify-between border-border/40">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-surface-strong to-border flex flex-col items-center justify-center shrink-0 border border-border/50 text-ink font-bold shadow-sm">
+                  <span className="text-xs text-ink-faint uppercase font-medium leading-none mb-0.5">Table</span>
+                  <span className="leading-none">{table.label}</span>
+                </div>
+                <div>
+                  <p className="text-body font-bold text-ink">
+                    {table.zone ? table.zone : 'No Zone'}
+                  </p>
+                  <p className="text-small text-ink-soft mt-0.5">
+                    Tag v{table.tokenVersion}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTable(table)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-strong text-ink-soft hover:text-ink hover:bg-surface-hover transition-colors shrink-0"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+              </button>
+            </Card>
+          ))}
+          {data?.tables.length === 0 ? (
+            <div className="py-10 text-center glass rounded-xl border border-border/40">
+              <p className="text-body font-medium text-ink-soft">No tables yet.</p>
+            </div>
+          ) : null}
+        </div>
       </AdminSection>
 
       {/* QR Code display */}
@@ -544,6 +581,95 @@ export default function AdminTables() {
           </Card>
         </AdminSection>
       ) : null}
+
+      {/* Mobile Action Modal */}
+      {selectedTable && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center md:hidden">
+          <div className="absolute inset-0 bg-ground/80 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedTable(null)}></div>
+          <div className="relative z-10 w-full max-w-sm bg-surface rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl animate-slide-up border border-border">
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-surface-strong to-border flex flex-col items-center justify-center shrink-0 border border-border/50 text-ink font-bold shadow-sm">
+                  <span className="text-[10px] text-ink-faint uppercase font-medium leading-none mb-0.5">Table</span>
+                  <span className="leading-none text-small">{selectedTable.label}</span>
+                </div>
+                <div>
+                  <h3 className="text-h4 font-bold text-ink">Table {selectedTable.label}</h3>
+                  <p className="text-small text-ink-soft">{selectedTable.zone || 'No Zone'} • Tag v{selectedTable.tokenVersion}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedTable(null)} className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {selectedTable.url ? (
+                <a
+                  href={selectedTable.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 px-4 rounded-xl font-bold bg-accent-wash text-accent hover:bg-accent/20 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Open Ordering Link
+                </a>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQr(selectedTable)
+                  setSelectedTable(null)
+                }}
+                disabled={!selectedTable.url}
+                className="w-full py-3 px-4 rounded-xl font-bold bg-surface-strong text-ink hover:bg-surface-hover transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="7" y="7" width="3" height="3"></rect><rect x="14" y="7" width="3" height="3"></rect><rect x="7" y="14" width="3" height="3"></rect><rect x="14" y="14" width="3" height="3"></rect></svg>
+                {selectedTable.url ? 'Show QR Code' : 'QR Unavailable'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingId(selectedTable.id)
+                  setSelectedTable(null)
+                  // Smooth scroll to top where edit row appears
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className="w-full py-3 px-4 rounded-xl font-bold bg-surface-strong text-ink hover:bg-surface-hover transition-colors flex items-center justify-center gap-2"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit Table
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmRotate(selectedTable)
+                  setSelectedTable(null)
+                }}
+                className="w-full py-3 px-4 rounded-xl font-bold bg-status-warning-wash/50 text-status-warning hover:bg-status-warning-wash transition-colors flex items-center justify-center gap-2"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                Rotate NFC Tag
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmDelete(selectedTable)
+                  setSelectedTable(null)
+                }}
+                className="w-full py-3 px-4 rounded-xl font-bold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                Delete Table
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
