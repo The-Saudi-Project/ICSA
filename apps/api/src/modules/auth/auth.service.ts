@@ -107,6 +107,15 @@ export async function login(
   }
 
   if (user.lockedUntil && user.lockedUntil > new Date()) {
+    // Verify anyway, and throw the result away.
+    //
+    // Argon2 dominates the cost of this request. Returning early from a locked
+    // account would answer in a couple of milliseconds where every other path
+    // takes tens, so an attacker could time the responses and learn which
+    // addresses exist and which they have already locked — the exact
+    // account-discovery oracle the identical error message exists to close.
+    await verifyPassword(user.passwordHash, password)
+
     await writeAudit({
       action: AuditAction.USER_LOGIN_FAILED,
       actorType: 'SYSTEM',

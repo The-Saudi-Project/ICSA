@@ -236,19 +236,45 @@ export async function tableQrCode(
   }
 }
 
+/**
+ * Characters that make Excel, LibreOffice and Google Sheets treat a cell as a
+ * formula rather than text. Quoting alone does not stop this — the spreadsheet
+ * strips the quotes and then evaluates what is inside.
+ */
+const CSV_FORMULA_TRIGGERS = /^[=+\-@\t\r]/
+
+/**
+ * Makes one CSV field safe to open in a spreadsheet.
+ *
+ * Two separate problems, and both have to be handled:
+ *
+ *  - Structure: a value containing a quote, comma or newline must be quoted and
+ *    its quotes doubled, or it breaks the column layout.
+ *  - Formula injection (CWE-1236): a table label of `=HYPERLINK("http://evil…")`
+ *    executes when a member of staff opens the export. Table labels are free
+ *    text set by any owner or manager, so this is reachable, and the file is
+ *    opened by someone who trusts it. Prefixing an apostrophe forces the cell to
+ *    be read as text; spreadsheets hide the apostrophe on display.
+ */
+export function csvField(value: string | number): string {
+  const raw = String(value)
+  const safe = CSV_FORMULA_TRIGGERS.test(raw) ? `'${raw}` : raw
+  return `"${safe.replace(/"/g, '""')}"`
+}
+
 /** CSV of every table URL, for writing to NFC chips in one sitting. */
 export async function exportTableUrls(): Promise<string> {
   const tables = await tenantRepo(TableModel).find({}, { sort: { label: 1 } })
 
   const rows = tables.map((t) => {
     const token = decryptSecret(t.tokenCipher)
-    // Quote and escape: a label such as `Table "A", window` would otherwise
-    // break the column structure.
-    const label = `"${t.label.replace(/"/g, '""')}"`
-    const zone = `"${(t.zone ?? '').replace(/"/g, '""')}"`
-    return [label, zone, t.status, t.tokenVersion, token ? tableUrl(token) : 'UNAVAILABLE'].join(
-      ',',
-    )
+    return [
+      csvField(t.label),
+      csvField(t.zone ?? ''),
+      csvField(t.status),
+      csvField(t.tokenVersion),
+      csvField(token ? tableUrl(token) : 'UNAVAILABLE'),
+    ].join(',')
   })
 
   return ['label,zone,status,tokenVersion,url', ...rows].join('\r\n')

@@ -12,7 +12,8 @@
  * is an httpOnly cookie the browser holds and JavaScript cannot see.
  */
 
-import type { OrderStatus } from '@rw/shared'
+import { useSyncExternalStore } from 'react'
+import type { OrderStatus } from '@rw/shared/orderState'
 
 const BASE = '/api/v1'
 
@@ -41,6 +42,18 @@ export function subscribeToAuth(listener: () => void): () => void {
 }
 
 export const getStaffUser = (): StaffUser | null => currentUser
+
+/**
+ * The signed-in user, as a subscription.
+ *
+ * Prefer this over `getStaffUser()` anywhere the answer being wrong later
+ * matters — route guards above all. A plain read is a snapshot: when a session
+ * ends mid-render-tree (a refresh token finally expiring, or another tab signing
+ * out) nothing tells React, and the screen keeps showing an interface the server
+ * has stopped answering.
+ */
+export const useStaffUser = (): StaffUser | null =>
+  useSyncExternalStore(subscribeToAuth, getStaffUser, getStaffUser)
 
 export class StaffApiError extends Error {
   constructor(
@@ -143,13 +156,23 @@ export async function staffApi<T>(path: string, init: RequestInit = {}): Promise
   }
 }
 
-async function rawBlob(path: string): Promise<Blob> {
-  const res = await fetch(`${BASE}${path}`, {
-    credentials: 'include',
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-  })
+async function rawBlob(path: string, failureMessage: string): Promise<Blob> {
+  const attempt = () =>
+    fetch(`${BASE}${path}`, {
+      credentials: 'include',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    })
+
+  let res = await attempt()
+
+  // Same one-shot refresh as `staffApi`. Without it, opening a QR code or an
+  // export more than fifteen minutes after signing in fails with a bare 401.
+  if (res.status === 401 && (await restoreSession())) {
+    res = await attempt()
+  }
+
   if (!res.ok) {
-    throw new StaffApiError(res.status, 'Could not load that image.')
+    throw new StaffApiError(res.status, failureMessage)
   }
   return res.blob()
 }
@@ -172,7 +195,38 @@ async function rawBlob(path: string): Promise<Blob> {
  * `<img>` as an object URL. **The caller must revoke that URL**, or every QR
  * view leaks a blob for the life of the tab.
  */
-export const fetchStaffImage = (path: string): Promise<Blob> => rawBlob(path)
+export const fetchStaffImage = (path: string): Promise<Blob> =>
+  rawBlob(path, 'Could not load that image.')
+
+/**
+ * Downloads an authenticated file and hands it to the browser as a save.
+ *
+ * The same constraint as `fetchStaffImage`, for the same reason: a plain
+ * `<a href="/api/v1/app/tables/export">` is an unauthenticated GET. The browser
+ * attaches no `Authorization` header — the access token is a module variable, not
+ * a cookie — so the link answered 401 and downloaded an error page instead of the
+ * CSV. Putting the token in the query string is not an option; that leaks a live
+ * credential into history and proxy logs.
+ *
+ * So the bytes come back through the ordinary staff client and a temporary
+ * anchor triggers the save. The object URL is revoked immediately afterwards.
+ */
+export async function downloadStaffFile(path: string, filename: string): Promise<void> {
+  const blob = await rawBlob(path, 'Could not download that file.')
+  const url = URL.createObjectURL(blob)
+
+  try {
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+  } finally {
+    // A tick, so the browser has started reading the blob before it is released.
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
+}
 
 /* ── orders ───────────────────────────────────────────────────────────────── */
 

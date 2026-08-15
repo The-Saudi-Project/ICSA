@@ -6,7 +6,40 @@ import { addToCart, cartCount, cartTotal, useCart } from '../lib/cart.js'
 import { getSession } from '../lib/session.js'
 import { Skeleton } from '../components/ui/Skeleton.js'
 import { Button } from '../components/ui/Button.js'
-import { useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
+
+/**
+ * Publishes the real height of the sticky header as `--app-header-h`.
+ *
+ * The category headings stick *below* the page header, so they need to know how
+ * tall it is. That was a hard-coded `top-[108px]`, which is only ever right on
+ * one device: the header includes `env(safe-area-inset-top)`, so on a notched
+ * phone the category bar overlapped the search field, and with larger text
+ * settings it floated below it leaving a strip of scrolling content visible.
+ * Measuring is the convention this repo already states for sticky offsets.
+ */
+function useHeaderHeightVar<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+
+  useLayoutEffect(() => {
+    const element = ref.current
+    if (!element) return
+
+    const publish = () => {
+      document.documentElement.style.setProperty(
+        '--app-header-h',
+        `${Math.round(element.getBoundingClientRect().height)}px`,
+      )
+    }
+
+    publish()
+    const observer = new ResizeObserver(publish)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  return ref
+}
 
 export default function Menu() {
   const session = getSession()
@@ -19,13 +52,36 @@ export default function Menu() {
   })
 
   const [search, setSearch] = useState('')
+  const searchId = useId()
+  const headerRef = useHeaderHeightVar<HTMLElement>()
 
   const count = cartCount(cart)
+
+  const query = search.trim().toLowerCase()
+
+  const matches = (item: MenuItem) =>
+    item.name.en.toLowerCase().includes(query) ||
+    (item.description?.en?.toLowerCase().includes(query) ?? false)
+
+  const visibleCategories = (data?.categories ?? [])
+    .map((category) => ({ ...category, items: category.items.filter(matches) }))
+    .filter((category) => category.items.length > 0)
+
+  // A search that matches nothing used to render an empty page: every category
+  // returned null and the only heading on screen was the restaurant's name.
+  const noResults = query.length > 0 && visibleCategories.length === 0
+
+  // Announced rather than only shown, so the result of typing reaches someone
+  // who cannot see the list shrink.
+  const resultCount = visibleCategories.reduce((sum, c) => sum + c.items.length, 0)
 
   return (
     <div className="min-h-dvh bg-ground transition-colors duration-300">
       {/* Premium Header */}
-      <header className="sticky top-0 z-20 bg-ground/80 backdrop-blur-xl border-b border-border shadow-sm">
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-20 bg-ground/80 backdrop-blur-xl border-b border-border shadow-sm"
+      >
         <div className="mx-auto max-w-2xl px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-4">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -45,14 +101,32 @@ export default function Menu() {
           
           {/* Search Bar */}
           <div className="mt-4 relative">
-            <input 
-              type="text" 
-              placeholder="Search the menu..." 
+            {/*
+              A placeholder is not a label: it disappears as soon as anything is
+              typed, and assistive technology may not read it at all. The label
+              is visually hidden so the design is unchanged and the field still
+              has a name.
+            */}
+            <label htmlFor={searchId} className="sr-only">
+              Search the menu
+            </label>
+            <input
+              id={searchId}
+              type="search"
+              inputMode="search"
+              autoComplete="off"
+              placeholder="Search the menu..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-surface-hover border border-border rounded-xl py-2.5 pl-10 pr-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash transition-all"
+              className="w-full bg-surface-hover border border-border rounded-xl py-2.5 ps-10 pe-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash transition-all"
             />
-            <svg className="absolute left-3 top-3 h-5 w-5 text-ink-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute start-3 top-3 h-5 w-5 text-ink-faint"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
@@ -81,28 +155,36 @@ export default function Menu() {
           </div>
         ) : null}
 
-        {data?.categories.length === 0 ? (
+        {data && data.categories.length === 0 ? (
           <div className="pt-24 text-center animate-fade-in">
-            <h2 className="text-h2">No items found</h2>
+            <h2 className="text-h2">Nothing on the menu yet</h2>
             <p className="mt-2 text-body text-ink-soft">
               The restaurant is updating their menu. Check back soon.
             </p>
           </div>
         ) : null}
 
+        {noResults ? (
+          <div className="pt-24 text-center animate-fade-in">
+            <h2 className="text-h2">No dishes match “{search.trim()}”</h2>
+            <p className="mt-2 text-body text-ink-soft">
+              Try a shorter word, or clear the search to see the whole menu.
+            </p>
+            <Button variant="secondary" onClick={() => setSearch('')} className="mt-6">
+              Clear search
+            </Button>
+          </div>
+        ) : null}
+
+        {/* Politely, so it does not interrupt while the customer is still typing. */}
+        <p aria-live="polite" className="sr-only">
+          {query ? `${resultCount} ${resultCount === 1 ? 'dish' : 'dishes'} match ${search.trim()}` : ''}
+        </p>
+
         <div className="stagger mt-6 space-y-10">
-          {data?.categories.map((category) => {
-            const filteredItems = category.items.filter(item => 
-              item.name.en.toLowerCase().includes(search.toLowerCase()) || 
-              (item.description?.en && item.description.en.toLowerCase().includes(search.toLowerCase()))
-            )
-
-            if (filteredItems.length === 0 && search) return null
-
-            return (
-              <Category key={category.id} category={{...category, items: filteredItems}} />
-            )
-          })}
+          {visibleCategories.map((category) => (
+            <Category key={category.id} category={category} />
+          ))}
         </div>
       </main>
 
@@ -132,7 +214,8 @@ export default function Menu() {
 function Category({ category }: { category: MenuCategory }) {
   return (
     <section>
-      <div className="sticky top-[108px] z-10 bg-ground/95 backdrop-blur-md py-3 -mx-4 px-4 border-b border-border shadow-sm">
+      {/* Offset measured into --app-header-h, never a constant — see useHeaderHeightVar. */}
+      <div className="sticky top-[var(--app-header-h,7rem)] z-10 bg-ground/95 backdrop-blur-md py-3 -mx-4 px-4 border-b border-border shadow-sm">
         <h2 className="text-h3 font-bold text-ink">
           {category.name.en}
         </h2>

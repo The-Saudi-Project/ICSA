@@ -10,6 +10,7 @@ import {
   createRestaurantSchema,
   objectIdSchema,
   RestaurantStatus,
+  slugSchema,
   updateRestaurantStatusSchema,
   TENANT_ROLES,
   UserStatus,
@@ -45,12 +46,21 @@ const auditQuerySchema = z.object({
   skip: z.coerce.number().int().min(0).default(0),
 })
 
+/**
+ * `slugSchema`, not a bare string.
+ *
+ * The slug is part of a customer-facing URL and carries a unique index and a
+ * reserved-word list. A loose `z.string().min(1)` here let an edit set a slug
+ * that creation would have rejected — `admin`, `api`, `Has Spaces` — which then
+ * failed deep inside Mongoose as a 500 instead of a 422, or collided with the
+ * unique index as an unhandled duplicate-key error.
+ */
 const updateRestaurantSchema = z.object({
   name: z.object({ en: z.string().trim().min(1), ar: z.string().trim().optional() }).optional(),
-  slug: z.string().trim().min(1).optional(),
-  city: z.string().trim().optional(),
-  vatNumber: z.string().trim().optional(),
-  crNumber: z.string().trim().optional(),
+  slug: slugSchema.optional(),
+  city: z.string().trim().max(80).optional(),
+  vatNumber: z.string().trim().max(30).optional(),
+  crNumber: z.string().trim().max(30).optional(),
 })
 
 /**

@@ -5,7 +5,7 @@
  * halalas, and this file only turns an integer into characters.
  */
 
-import { formatHalalas } from '@rw/shared'
+import { formatHalalas } from '@rw/shared/money'
 
 /** "43.48". The currency is rendered separately so it can be styled down. */
 export const money = (halalas: number): string => formatHalalas(halalas)

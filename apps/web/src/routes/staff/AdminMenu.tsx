@@ -7,7 +7,7 @@
  * editor, which is the only place those fields can be authored.
  */
 
-import { formatHalalas, sarToHalalas } from '@rw/shared'
+import { formatHalalas, sarToHalalas } from '@rw/shared/money'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Price } from '../../components/Price.js'
@@ -228,8 +228,9 @@ export default function AdminMenu() {
             />
           ) : null}
 
-          <Card variant="glass" className="overflow-hidden border-border/40 p-0">
-            <table className="w-full">
+          {/* Scrolls inside its own container so the page never scrolls sideways. */}
+          <Card variant="glass" className="overflow-x-auto border-border/40 p-0">
+            <table className="w-full min-w-[40rem]">
               <thead>
                 <tr className="border-b border-border/50 bg-surface-strong/30 text-small font-bold text-ink-soft uppercase tracking-wider">
                   <th className="py-4 px-6 text-start">Item</th>

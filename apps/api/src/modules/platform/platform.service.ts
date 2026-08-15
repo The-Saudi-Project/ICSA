@@ -246,6 +246,16 @@ export async function listPlatformAudit(options: {
   }))
 }
 
+/**
+ * Issues a new one-time password for a restaurant's owner.
+ *
+ * The reason this exists is almost always "the owner is locked out" or "the
+ * owner's account may be compromised". Both mean every session that account had
+ * must end, so this revokes them — exactly as `staff.service.ts:resetStaffPassword`
+ * does. Changing the hash alone would leave a stolen access token valid until it
+ * expired and a stolen refresh token valid for its full 30 days, which defeats
+ * the point of resetting the password at all.
+ */
 export async function resetOwnerPassword(restaurantId: string): Promise<{ ownerEmail: string; temporaryPassword: string }> {
   const restaurant = await unscoped(RestaurantModel).findById(restaurantId)
   if (!restaurant) throw notFound('Restaurant not found')
@@ -261,12 +271,16 @@ export async function resetOwnerPassword(restaurantId: string): Promise<{ ownerE
     { $set: { passwordHash, mustChangePassword: true } }
   )
 
+  // Bumps tokenVersion (kills live access tokens on the next request) and
+  // revokes every refresh token in every family.
+  await revokeAllSessions(owner._id.toString(), 'platform-owner-password-reset')
+
   await writeAudit({
-    action: AuditAction.PASSWORD_CHANGED,
+    action: AuditAction.STAFF_PASSWORD_RESET,
     targetType: 'User',
     targetId: owner._id.toString(),
     restaurantId: restaurantId,
-    metadata: { reason: 'platform-admin-reset' }
+    metadata: { reason: 'platform-admin-reset', email: owner.email }
   })
 
   return { ownerEmail: owner.email, temporaryPassword }
@@ -275,6 +289,15 @@ export async function resetOwnerPassword(restaurantId: string): Promise<{ ownerE
 export async function updateRestaurant(id: string, payload: { name?: { en: string; ar?: string }; slug?: string; city?: string; vatNumber?: string; crNumber?: string }): Promise<RestaurantDoc> {
   const restaurant = await unscoped(RestaurantModel).findById(id)
   if (!restaurant) throw notFound('Restaurant not found')
+
+  // Checked here as well as at creation. Without it the unique index raises a
+  // duplicate-key error, which the error handler cannot recognise and turns into
+  // a 500 — an operator retyping a slug deserves "that slug is taken", not
+  // "internal server error".
+  if (payload.slug && payload.slug !== restaurant.slug) {
+    const taken = await unscoped(RestaurantModel).findOne({ slug: payload.slug })
+    if (taken) throw conflict('That slug is already taken')
+  }
 
   const updated = await unscoped(RestaurantModel).findOneAndUpdate(
     { _id: restaurant._id },

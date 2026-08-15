@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { fetchRestaurantStats, getStaffUser } from '../../lib/staffApi.js'
-import { formatHalalas } from '@rw/shared'
+import { formatHalalas } from '@rw/shared/money'
 import { Card } from '../../components/ui/Card.js'
 import { Skeleton } from '../../components/ui/Skeleton.js'
 

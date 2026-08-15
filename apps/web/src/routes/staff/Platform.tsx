@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import {
   createRestaurant,
@@ -30,6 +30,37 @@ export default function Platform() {
                   : 'overview'
   
   const [showProvisionModal, setShowProvisionModal] = useState(false)
+  const provisionTitleId = useId()
+  const provisionDialogRef = useRef<HTMLDivElement>(null)
+  const provisionOpenerRef = useRef<HTMLElement | null>(null)
+
+  const closeProvision = useCallback(() => {
+    setShowProvisionModal(false)
+    // Focus goes back where it came from, or it lands on <body> and a keyboard
+    // user restarts their journey through the page from the very top.
+    provisionOpenerRef.current?.focus()
+    provisionOpenerRef.current = null
+  }, [])
+
+  /**
+   * The provisioning dialog was a plain overlay: no dialog role, no Escape, and
+   * focus stayed behind it on the page underneath, so a keyboard user could tab
+   * "into" content they could not see while the form was open. This gives it the
+   * three things a modal actually needs — a name, an escape route, and a
+   * starting focus position.
+   */
+  useEffect(() => {
+    if (!showProvisionModal) return
+
+    provisionOpenerRef.current = document.activeElement as HTMLElement | null
+    provisionDialogRef.current?.querySelector<HTMLElement>('input, select, button')?.focus()
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeProvision()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showProvisionModal, closeProvision])
 
   const [draft, setDraft] = useState({ name: '', slug: '', type: 'SINGLE', parentId: '', ownerEmail: '', ownerName: '' })
   const [secret, setSecret] = useState<{ label: string; value: string } | null>(null)
@@ -177,8 +208,16 @@ export default function Platform() {
                   <Card key={r.id} variant="glass" className="p-0 overflow-hidden flex flex-col relative group">
                     <div className="absolute inset-0 bg-gradient-to-b from-surface-hover to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                     
-                    <div 
-                       className="p-6 flex-1 relative z-10 border-b border-border/50 cursor-pointer hover:bg-surface-hover/30 transition-colors"
+                    {/*
+                      A `div` with an `onClick` is invisible to the keyboard:
+                      this was the only route into a tenant's detail page, so
+                      the whole screen was unreachable without a mouse. A real
+                      button carries the role, the tab stop and Enter/Space for
+                      free; the heading inside it names it.
+                    */}
+                    <button
+                       type="button"
+                       className="p-6 flex-1 relative z-10 border-b border-border/50 cursor-pointer hover:bg-surface-hover/30 transition-colors text-start w-full"
                        onClick={() => navigate(`/platform/tenants/${r.id}`)}
                     >
                       <div className="flex items-start justify-between gap-4 mb-2">
@@ -200,12 +239,25 @@ export default function Platform() {
                             {r.staffCount} Staff
                          </span>
                       </div>
-                    </div>
-                    
+                    </button>
+
                     <div className="p-4 bg-surface-hover/50 flex items-center justify-end gap-3 relative z-10">
+                      {/*
+                        Suspending stops a real business trading within one
+                        access-token lifetime: staff are signed out, live table
+                        sessions stop resolving, and customers mid-order get a
+                        dead page. That is not a one-click action, and it sat
+                        next to a Reset Password button that already asked.
+                      */}
                       <Button
                         variant="ghost"
-                        onClick={() => suspend.mutate(r)}
+                        onClick={() => {
+                          const question =
+                            r.status === 'SUSPENDED'
+                              ? `Reactivate ${r.name.en}? Staff and customers can use it again straight away.`
+                              : `Suspend ${r.name.en}? Trading stops immediately — staff are signed out and customers at a table cannot order.`
+                          if (window.confirm(question)) suspend.mutate(r)
+                        }}
                         disabled={suspend.isPending}
                         className={r.status === 'SUSPENDED' ? 'text-status-success' : 'text-status-warning'}
                       >
@@ -275,15 +327,26 @@ export default function Platform() {
       {/* PROVISION TENANT MODAL */}
       {showProvisionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-           {/* Backdrop */}
-           <div className="absolute inset-0 bg-ground/80 backdrop-blur-sm animate-fade-in" onClick={() => setShowProvisionModal(false)}></div>
-           
+           {/* Backdrop. aria-hidden because it is a click target, not content. */}
+           <div
+             aria-hidden="true"
+             className="absolute inset-0 bg-ground/80 backdrop-blur-sm animate-fade-in"
+             onClick={closeProvision}
+           ></div>
+
            {/* Modal Dialog */}
-           <Card variant="glass" className="relative z-10 w-full max-w-lg p-8 shadow-2xl animate-slide-up border-border-strong">
+           <Card
+             ref={provisionDialogRef}
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby={provisionTitleId}
+             variant="glass"
+             className="relative z-10 w-full max-w-lg p-8 shadow-2xl animate-slide-up border-border-strong"
+           >
               <div className="flex items-center justify-between mb-6">
-                 <h2 className="text-h2 font-black tracking-tight text-ink">Provision Tenant</h2>
-                 <button onClick={() => setShowProvisionModal(false)} className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink transition-colors">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                 <h2 id={provisionTitleId} className="text-h2 font-black tracking-tight text-ink">Provision Tenant</h2>
+                 <button type="button" aria-label="Close" onClick={closeProvision} className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink transition-colors">
+                    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                  </button>
               </div>
 
@@ -359,13 +422,13 @@ export default function Platform() {
                     {secret.value}
                   </div>
                   <p className="mt-3 text-caption text-gold-dim/90 font-medium">Copy this password immediately. It will not be shown again.</p>
-                  <Button variant="secondary" onClick={() => { setSecret(null); setShowProvisionModal(false) }} className="w-full mt-4 bg-surface text-gold border-gold/30 hover:bg-gold/10 hover:border-gold/50">
+                  <Button variant="secondary" onClick={() => { setSecret(null); closeProvision() }} className="w-full mt-4 bg-surface text-gold border-gold/30 hover:bg-gold/10 hover:border-gold/50">
                     I have saved it
                   </Button>
                 </div>
               ) : (
                 <div className="mt-8 flex gap-3">
-                   <Button variant="ghost" onClick={() => setShowProvisionModal(false)} className="flex-1">Cancel</Button>
+                   <Button variant="ghost" onClick={closeProvision} className="flex-1">Cancel</Button>
                    <Button
                      variant="primary"
                      disabled={!draft.name.trim() || !draft.slug.trim() || !draft.ownerEmail.trim() || !draft.ownerName.trim() || (draft.type === 'BRANCH' && !draft.parentId) || create.isPending}

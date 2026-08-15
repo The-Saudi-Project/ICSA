@@ -42,10 +42,12 @@ export function createApp(): Express {
 
   app.disable('x-powered-by')
 
-  // Render/Vercel/Cloudflare put exactly one proxy in front of us. Trusting a
-  // fixed hop count — rather than `true` — stops a client from spoofing its IP
-  // with a forged X-Forwarded-For, which would defeat IP rate limiting.
-  app.set('trust proxy', env.isProduction ? 1 : false)
+  // Trusting a fixed hop count — rather than `true` — stops a client from
+  // spoofing its IP with a forged X-Forwarded-For, which would defeat IP rate
+  // limiting. The count is configurable because it is a property of the
+  // deployment, not of the code: see TRUST_PROXY_HOPS in config/env.ts for how
+  // to get it right and what breaks either way.
+  app.set('trust proxy', env.isProduction ? env.TRUST_PROXY_HOPS : false)
 
   app.use(requestContext)
 

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import {
   createTable,
   deleteTable,
+  downloadStaffFile,
   fetchStaffImage,
   fetchTables,
   rotateTableToken,
@@ -163,6 +164,14 @@ export default function AdminTables() {
   const [showQr, setShowQr] = useState<AdminTable | null>(null)
   const qr = useTableQr(showQr?.id)
 
+  // Not a plain link: the export route is authenticated and the browser cannot
+  // attach the in-memory access token to an ordinary navigation.
+  const exportCsv = useMutation({
+    mutationFn: () => downloadStaffFile('/app/tables/export', 'tables.csv'),
+    onSuccess: () => setError(null),
+    onError: (e: Error) => setError(e.message),
+  })
+
   const add = useMutation({
     mutationFn: () => createTable(label.trim(), zone.trim() || undefined),
     onSuccess: () => {
@@ -240,19 +249,27 @@ export default function AdminTables() {
       <AdminSection
         title="Tables"
         action={
-          <a
-            href="/api/v1/app/tables/export"
-            className="pressable text-small font-bold text-accent hover:text-accent-dim hover:underline flex items-center gap-2 bg-accent-wash px-4 py-2 rounded-xl transition-colors"
+          <button
+            type="button"
+            onClick={() => exportCsv.mutate()}
+            disabled={exportCsv.isPending}
+            className="pressable text-small font-bold text-accent hover:text-accent-dim hover:underline flex items-center gap-2 bg-accent-wash px-4 py-2 rounded-xl transition-colors disabled:opacity-50 disabled:pointer-events-none"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Export CSV
-          </a>
+            {exportCsv.isPending ? 'Preparing…' : 'Export CSV'}
+          </button>
         }
       >
         {isPending ? <p className="py-6 text-body text-ink-soft">Loading…</p> : null}
 
-        <Card variant="glass" className="overflow-hidden border-border/40 p-0">
-          <table className="w-full">
+        {/*
+          The row carries five actions and never fits a phone. Scrolling the
+          table inside its own container keeps the page itself from scrolling
+          sideways, which is what happened before: the Card clipped the actions
+          and there was no way to reach Rotate Tag on a small screen.
+        */}
+        <Card variant="glass" className="overflow-x-auto border-border/40 p-0">
+          <table className="w-full min-w-[46rem]">
             <thead>
               <tr className="border-b border-border/50 bg-surface-strong/30 text-small font-bold text-ink-soft uppercase tracking-wider">
                 <th className="py-4 px-6 text-start">Table</th>

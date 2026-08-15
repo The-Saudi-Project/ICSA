@@ -1,4 +1,4 @@
-import { OrderStatus, allowedNextStatuses } from '@rw/shared'
+import { OrderStatus, allowedNextStatuses } from '@rw/shared/orderState'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { minutesSince } from '../../lib/format.js'
@@ -80,6 +80,34 @@ export default function Kitchen() {
           <Card variant="glass" className="p-6 border-status-danger/40 bg-status-danger-wash text-status-danger flex items-center gap-4 shadow-lg">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
             <span className="text-xl font-bold">Lost the connection. Retrying every few seconds...</span>
+          </Card>
+        ) : null}
+
+        {/*
+          A refused transition used to do nothing visible at all. The board
+          silently re-fetched and the ticket stayed put, so a cook pressing
+          "Start Cooking" on an order the cashier had just cancelled had no way
+          to tell the tap from a dead screen. The server's own words are shown —
+          "This order was changed by someone else", "This order is CANCELLED" —
+          because they say what happened better than a generic failure can.
+        */}
+        {advance.isError ? (
+          <Card
+            role="alert"
+            variant="glass"
+            className="p-6 mb-8 border-status-danger/40 bg-status-danger-wash text-status-danger flex items-center justify-between gap-4 shadow-lg"
+          >
+            <div className="flex items-center gap-4">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              <span className="text-xl font-bold">{advance.error.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => advance.reset()}
+              className="shrink-0 rounded-xl border-2 border-current px-5 py-2 text-lg font-bold"
+            >
+              Dismiss
+            </button>
           </Card>
         ) : null}
 

@@ -1,4 +1,4 @@
-import { OrderStatus } from '@rw/shared'
+import { OrderStatus } from '@rw/shared/orderState'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Price } from '../../components/Price.js'
 import { minutesSince } from '../../lib/format.js'
@@ -27,6 +27,14 @@ export default function Cashier() {
       transitionOrder(order.id, OrderStatus.COMPLETED, order.status),
     onSettled: invalidate,
   })
+
+  // Either action can be refused — the order moved, the role is wrong, the cash
+  // was already taken. Whichever failed most recently is the one to explain.
+  const actionError = takePayment.error ?? complete.error
+  const dismissActionError = () => {
+    takePayment.reset()
+    complete.reset()
+  }
 
   const orders = data?.orders ?? []
   const awaitingPayment = orders.filter((o) => o.status === OrderStatus.CASH_PENDING)
@@ -68,6 +76,32 @@ export default function Cashier() {
         <Card variant="glass" className="p-6 mb-8 border-status-danger/30 bg-status-danger-wash text-status-danger flex items-center gap-4">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
           <span className="font-bold">Lost connection. Retrying every few seconds...</span>
+        </Card>
+      ) : null}
+
+      {/*
+        Confirming cash is the moment money is recognised, so a refusal must be
+        impossible to miss. Previously the mutation only invalidated the board:
+        a double-confirm ("This order is already paid") or a stale screen
+        ("This order was changed by someone else") looked exactly like success.
+      */}
+      {actionError ? (
+        <Card
+          role="alert"
+          variant="glass"
+          className="p-6 mb-8 border-status-danger/30 bg-status-danger-wash text-status-danger flex items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span className="font-bold">{actionError.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={dismissActionError}
+            className="shrink-0 rounded-lg border border-current px-4 py-1.5 text-small font-bold"
+          >
+            Dismiss
+          </button>
         </Card>
       ) : null}
 

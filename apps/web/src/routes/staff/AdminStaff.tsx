@@ -2,7 +2,7 @@
  * `/admin/staff` — glass tables, colour-coded role badges.
  */
 
-import { Role } from '@rw/shared'
+import { Role } from '@rw/shared/enums'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import {
@@ -159,8 +159,9 @@ export default function AdminStaff() {
       <AdminSection title="Team">
         {isPending ? <p className="py-6 text-body text-ink-soft">Loading…</p> : null}
 
-        <Card variant="glass" className="overflow-hidden border-border/40 p-0">
-          <table className="w-full">
+        {/* Scrolls inside its own container so the page never scrolls sideways. */}
+        <Card variant="glass" className="overflow-x-auto border-border/40 p-0">
+          <table className="w-full min-w-[38rem]">
             <thead>
               <tr className="border-b border-border/50 bg-surface-strong/30 text-small font-bold text-ink-soft uppercase tracking-wider">
                 <th className="py-4 px-6 text-start">Name</th>
@@ -202,9 +203,24 @@ export default function AdminStaff() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                        {/*
+                          Both of these end every session the person has, and
+                          both used to fire on a single click of two small
+                          adjacent buttons. A misplaced tap locked a working
+                          cashier out mid-service with no way to undo it — the
+                          old password is gone and cannot be recovered.
+                        */}
                         <button
                           type="button"
-                          onClick={() => reset.mutate(person)}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Reset the password for ${person.name}? Their current password stops working immediately, they are signed out everywhere, and you must hand them the new one-time password yourself.`,
+                              )
+                            ) {
+                              reset.mutate(person)
+                            }
+                          }}
                           disabled={reset.isPending || disabled}
                           className={`${quietButtonClass} !py-1.5`}
                         >
@@ -213,12 +229,16 @@ export default function AdminStaff() {
                         <button
                           type="button"
                           disabled={isMe || setStatus.isPending}
-                          onClick={() =>
+                          onClick={() => {
+                            const question = disabled
+                              ? `Re-enable ${person.name}? They can sign in again with their existing password.`
+                              : `Disable ${person.name}? They are signed out immediately and cannot sign in again until you re-enable them.`
+                            if (!window.confirm(question)) return
                             setStatus.mutate({
                               person,
                               status: disabled ? 'ACTIVE' : 'DISABLED',
                             })
-                          }
+                          }}
                           className={`${quietButtonClass} !py-1.5 ${disabled ? 'text-status-success' : 'text-status-danger'}`}
                           title={isMe ? 'You cannot disable your own account' : undefined}
                         >

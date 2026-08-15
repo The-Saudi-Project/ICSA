@@ -9,6 +9,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./enums": {
+      "types": "./dist/enums.d.ts",
+      "default": "./dist/enums.js"
+    },
+    "./money": {
+      "types": "./dist/money.d.ts",
+      "default": "./dist/money.js"
+    },
+    "./orderState": {
+      "types": "./dist/orderState.d.ts",
+      "default": "./dist/orderState.js"
     }
   },
   "scripts": {

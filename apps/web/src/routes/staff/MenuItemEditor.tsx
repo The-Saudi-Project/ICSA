@@ -17,7 +17,7 @@
  *     sent at all; the form drops it rather than failing validation at the server.
  */
 
-import { formatHalalas, sarToHalalas } from '@rw/shared'
+import { formatHalalas, sarToHalalas } from '@rw/shared/money'
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button.js'
 import { Card } from '../../components/ui/Card.js'

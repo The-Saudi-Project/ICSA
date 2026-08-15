@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Suspense, lazy } from 'react'
 
-import { getStaffUser } from './lib/staffApi.js'
+import { useStaffUser } from './lib/staffApi.js'
 import { homeForRole, mayVisit } from './lib/roles.js'
 import NoTable from './routes/NoTable.js'
 
@@ -92,10 +92,15 @@ function Fallback() {
  *
  * `mayVisit` in `lib/roles.ts` is now the single table both this guard and the
  * sidebar consult, so a link can never appear for a surface this would refuse.
+ *
+ * The user is *subscribed to*, not merely read once. When a refresh token
+ * finally expires mid-shift, `staffApi` clears the signed-in user; without a
+ * subscription nothing re-rendered, so the cashier kept looking at a till screen
+ * that answered 401 to everything and never offered a way back to sign in.
  */
 function RequireStaff({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation()
-  const user = getStaffUser()
+  const user = useStaffUser()
 
   if (!user) return <Navigate to="/staff/login" replace />
 

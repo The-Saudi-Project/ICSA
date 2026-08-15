@@ -88,6 +88,26 @@ const EnvSchema = z.object({
   BODY_LIMIT: z.string().default('100kb'),
 
   /**
+   * How many reverse proxies sit in front of this process, in production.
+   *
+   * This number decides which entry of `X-Forwarded-For` Express reports as
+   * `req.ip`, and every IP rate limit and every audit IP hash depends on it.
+   * Both ways of getting it wrong are real:
+   *
+   *  - too high: a client can prepend its own `X-Forwarded-For` and be counted
+   *    as whatever address it likes, so IP rate limiting stops working;
+   *  - too low: every request appears to come from the last proxy, so one
+   *    shared bucket rate-limits the entire internet together and the first
+   *    busy lunch service 429s real customers.
+   *
+   * The default of 1 is right for a single hosting proxy. A deployment that
+   * proxies through a second edge (this repo's `vercel.json` rewrites `/api`
+   * onward to the API host) has two, and must say so here. Verify rather than
+   * assume: log `req.ips` once against real traffic and count.
+   */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(1),
+
+  /**
    * Image hosting. `none` means uploads are refused with an explanation and
    * everything else still works — development is never blocked on an account.
    *

@@ -5,7 +5,7 @@
  * The state band uses an animated glowing progress bar with stage dots.
  */
 
-import { OrderStatus } from '@rw/shared'
+import { OrderStatus } from '@rw/shared/orderState'
 import type { CSSProperties } from 'react'
 
 type Scale = 'fine' | 'default' | 'wall'

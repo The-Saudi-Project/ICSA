@@ -105,4 +105,34 @@ describe('loadEnv', () => {
       expect(Buffer.from(env.TABLE_TOKEN_KEY!, 'base64')).toHaveLength(32)
     })
   })
+
+  /**
+   * The hop count decides which X-Forwarded-For entry becomes `req.ip`, so every
+   * IP rate limit depends on it. It must default to the safe single-proxy value
+   * and must not silently accept nonsense.
+   */
+  describe('TRUST_PROXY_HOPS', () => {
+    it('defaults to one proxy', () => {
+      expect(loadEnv({} as NodeJS.ProcessEnv).TRUST_PROXY_HOPS).toBe(1)
+    })
+
+    it('accepts a deployment with a second edge in front', () => {
+      expect(
+        loadEnv({ ...productionEnv, TRUST_PROXY_HOPS: '2' } as NodeJS.ProcessEnv)
+          .TRUST_PROXY_HOPS,
+      ).toBe(2)
+    })
+
+    it('accepts zero, for a server exposed directly', () => {
+      expect(
+        loadEnv({ TRUST_PROXY_HOPS: '0' } as NodeJS.ProcessEnv).TRUST_PROXY_HOPS,
+      ).toBe(0)
+    })
+
+    it.each(['-1', '11', 'yes', '1.5'])('rejects %j', (value) => {
+      expect(() => loadEnv({ TRUST_PROXY_HOPS: value } as NodeJS.ProcessEnv)).toThrow(
+        /Invalid environment/,
+      )
+    })
+  })
 })

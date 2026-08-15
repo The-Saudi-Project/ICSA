@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { OrderStatus as Status } from '@rw/shared'
+import { OrderStatus as Status } from '@rw/shared/orderState'
 import { Link, useParams } from 'react-router'
 import { StateBand } from '../components/Openwork.js'
 import { Price } from '../components/Price.js'
