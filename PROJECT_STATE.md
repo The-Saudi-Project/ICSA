@@ -35,8 +35,11 @@ Status:          Phase 1 complete. A full adversarial audit landed on 2026-08-15
                  held; the findings are at the edges. NOTE: the DB-backed suites
                  could not run in the audit environment (mongod download blocked),
                  so GitHub CI is the gate for that work — see §17.
-                 One item still open from Step 8: the menu image upload interface,
-                 blocked on Cloudinary credentials (see §7).
+                 Phase 1 has NO open feature work. The menu image upload interface
+                 was recorded here as blocked on Cloudinary; the code disagrees and
+                 the code is right — ImageUploadField is built and wired into the
+                 item editor, and §7 records Cloudinary as verified on 2026-08-12.
+                 Corrected 2026-08-15.
 ```
 
 Phases: **0** discovery ✅ → **1** core ordering MVP → **2** payments + OTP + pickup →
@@ -46,8 +49,14 @@ Phases: **0** discovery ✅ → **1** core ordering MVP → **2** payments + OTP
 
 ## 3. Current Status
 
-**Phase 1 is complete** — backend (Steps 1–6), all five frontend surfaces (Step 7), and hardening
-(Step 8) except the menu image upload interface.
+**Phase 1 is complete** — backend (Steps 1–6), all five frontend surfaces (Step 7), hardening
+(Step 8), the post-audit fixes and the restaurant settings API (Step 10).
+
+> **Corrected 2026-08-15.** This section used to carve out "except the menu image upload
+> interface". That was stale in two ways: `ImageUploadField.tsx` is built and wired into the menu
+> item editor (and now the settings screen), and §7 records Cloudinary as configured and verified
+> on 2026-08-12. Nothing in Phase 1 is outstanding. The only open item carrying a Phase 1 number
+> is the kitchen stock question in §16, which is a **product decision**, not unbuilt work.
 
 `npm run build`, `npm run typecheck`, `npm run lint`, `npm test` and `npm run test:security` are
 all green as of **2026-08-11** — **270 API tests + 43 shared tests passing, 0 failing**, of which
