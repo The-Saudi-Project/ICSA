@@ -48,6 +48,7 @@ export interface PricedItem {
   lineSubtotalHalalas: number
   lineVatHalalas: number
   lineTotalHalalas: number
+  prepTimeMinutes?: number
   note?: string
 }
 
@@ -191,6 +192,7 @@ export async function priceOrder(
       lineSubtotalHalalas: breakdown.netHalalas,
       lineVatHalalas: breakdown.vatHalalas,
       lineTotalHalalas: breakdown.grossHalalas,
+      ...(item.prepTimeMinutes != null ? { prepTimeMinutes: item.prepTimeMinutes } : {}),
       ...(line.note ? { note: line.note } : {}),
     }
   })

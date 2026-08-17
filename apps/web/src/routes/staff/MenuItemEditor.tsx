@@ -373,6 +373,12 @@ export function MenuItemEditor({
             onChange={(e) => set('nameAr', e.target.value)}
             placeholder="برياني الدجاج المالباري"
           />
+          {!draft.nameAr.trim() && (
+            <p className="mt-1 text-caption text-status-warning flex items-center gap-1 font-medium">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Arabic name is recommended for the translated menu.
+            </p>
+          )}
         </Field>
 
         <Field label="Description (English)">
@@ -393,6 +399,12 @@ export function MenuItemEditor({
             onChange={(e) => set('descriptionAr', e.target.value)}
             placeholder="أرز معطر مع الدجاج المتبل"
           />
+          {draft.descriptionEn.trim() && !draft.descriptionAr.trim() && (
+            <p className="mt-1 text-caption text-status-warning flex items-center gap-1 font-medium">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Arabic description is missing.
+            </p>
+          )}
         </Field>
       </div>
 
@@ -532,6 +544,12 @@ export function MenuItemEditor({
                     }
                     placeholder="الحجم"
                   />
+                  {!group.name.ar?.trim() && (
+                    <p className="mt-1 text-caption text-status-warning flex items-center gap-1 font-medium">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      Missing Arabic translation
+                    </p>
+                  )}
                 </Field>
               </div>
 
@@ -623,6 +641,12 @@ export function MenuItemEditor({
                         }
                         placeholder="كبير"
                       />
+                      {!option.name.ar?.trim() && (
+                        <p className="mt-1 text-caption text-status-warning flex items-center gap-1 font-medium">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                          Missing translation
+                        </p>
+                      )}
                     </Field>
                     <Field label="Extra cost (SAR)">
                       <input

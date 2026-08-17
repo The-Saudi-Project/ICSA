@@ -17,6 +17,7 @@ import { AuditAction, AuditLogModel } from '../audit/auditLog.model.js'
 import { revokeAllSessions } from '../auth/auth.service.js'
 import { RestaurantModel, type RestaurantDoc } from '../restaurants/restaurant.model.js'
 import { UserModel, type UserDoc } from '../users/user.model.js'
+import { OrderModel } from '../orders/order.model.js'
 
 export interface CreatedRestaurant {
   restaurant: RestaurantDoc
@@ -126,6 +127,8 @@ export interface RestaurantSummary {
   type: string
   parentId?: string | null
   status: string
+  subscription: { plan: string, status: string }
+  features: string[]
   /** Optional schema fields come back as `string | null | undefined` from Mongoose. */
   city?: string | null
   staffCount: number
@@ -156,6 +159,8 @@ export async function listRestaurants(options: {
       type: r.type,
       parentId: r.parentId ? r.parentId.toString() : null,
       status: r.status,
+      subscription: r.subscription ?? { plan: 'FREE', status: 'ACTIVE' },
+      features: r.features ?? [],
       city: r.city,
       staffCount: await unscoped(UserModel).countDocuments({ restaurantId: r._id }),
       createdAt: r.createdAt,
@@ -401,3 +406,65 @@ export async function deactivateRestaurantStaff(
 ): Promise<UserDoc> {
   return updateRestaurantStaff(restaurantId, staffId, { status: UserStatus.DISABLED })
 }
+
+export async function getPlatformAnalytics() {
+  const [totalRestaurants, totalUsers, totalOrders, revenueStats] = await Promise.all([
+    unscoped(RestaurantModel).countDocuments(),
+    unscoped(UserModel).countDocuments(),
+    unscoped(OrderModel).countDocuments(),
+    unscoped(OrderModel).aggregate<{ totalHalalas: number }>([
+      { $match: { status: 'COMPLETED' } },
+      { $group: { _id: null, totalHalalas: { $sum: '$totals.grandTotalHalalas' } } }
+    ])
+  ])
+
+  const totalRevenue = revenueStats.length > 0 && revenueStats[0] ? revenueStats[0].totalHalalas / 100 : 0
+
+  return {
+    totalRestaurants,
+    totalUsers,
+    totalOrders,
+    totalRevenue
+  }
+}
+
+export async function updateSubscription(id: string, payload: { plan: string; status: string }): Promise<RestaurantDoc> {
+  const restaurant = await unscoped(RestaurantModel).findById(id)
+  if (!restaurant) throw notFound('Restaurant not found')
+
+  const updated = await unscoped(RestaurantModel).findOneAndUpdate(
+    { _id: restaurant._id },
+    { $set: { 'subscription.plan': payload.plan, 'subscription.status': payload.status } },
+    { new: true }
+  )
+
+  await writeAudit({
+    action: AuditAction.RESTAURANT_UPDATED,
+    targetType: 'Restaurant',
+    targetId: id,
+    metadata: { subscription: payload },
+  })
+
+  return updated!
+}
+
+export async function updateFeatures(id: string, features: string[]): Promise<RestaurantDoc> {
+  const restaurant = await unscoped(RestaurantModel).findById(id)
+  if (!restaurant) throw notFound('Restaurant not found')
+
+  const updated = await unscoped(RestaurantModel).findOneAndUpdate(
+    { _id: restaurant._id },
+    { $set: { features } },
+    { new: true }
+  )
+
+  await writeAudit({
+    action: AuditAction.RESTAURANT_UPDATED,
+    targetType: 'Restaurant',
+    targetId: id,
+    metadata: { features },
+  })
+
+  return updated!
+}
+

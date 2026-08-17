@@ -181,6 +181,7 @@ export interface StaffOrderLine {
   quantity: number
   modifiers: { nameSnapshot: { en: string } }[]
   lineTotalHalalas: number
+  prepTimeMinutes?: number
   note?: string
 }
 
@@ -196,10 +197,11 @@ export interface StaffOrder {
   items: StaffOrderLine[]
   totals: { grandTotalHalalas: number; vatHalalas: number; subtotalHalalas: number }
   customerNote?: string | null
+  isRush: boolean
   placedAt: string
 }
 
-export const fetchBoard = (board: 'kitchen' | 'cashier') =>
+export const fetchBoard = (board: 'kitchen' | 'cashier' | 'waiter') =>
   staffApi<{ orders: StaffOrder[]; count: number }>(`/app/orders?board=${board}`)
 
 export const fetchOrderHistory = (filter: {
@@ -226,14 +228,52 @@ export const transitionOrder = (id: string, to: OrderStatus, expectedCurrentStat
     body: JSON.stringify({ to, ...(expectedCurrentStatus ? { expectedCurrentStatus } : {}) }),
   })
 
+export const staffCreateOrder = (body: any, idempotencyKey: string) =>
+  staffApi<{ order: StaffOrder }>('/app/orders/staff-create', {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(body),
+  })
+
 export const confirmCash = (id: string) =>
   staffApi<{ order: StaffOrder }>(`/app/orders/${id}/confirm-cash`, { method: 'POST' })
+
+export const updateWaitTime = (estimatedWaitMinutes: number) =>
+  staffApi<{ estimatedWaitMinutes: number }>('/app/restaurants/wait-time', {
+    method: 'PATCH',
+    body: JSON.stringify({ estimatedWaitMinutes }),
+  })
+
+export const toggleRushOrder = (id: string, isRush: boolean) =>
+  staffApi<{ order: StaffOrder }>(`/app/orders/${id}/rush`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isRush }),
+  })
+
+export const refundOrder = (id: string) =>
+  staffApi<{ order: StaffOrder }>(`/app/orders/${id}/refund`, {
+    method: 'POST',
+  })
+
+export const getSettings = () =>
+  staffApi<{ settings: any }>('/app/restaurants/settings')
+
+export const updateSettings = (settings: any) =>
+  staffApi<{ settings: any }>('/app/restaurants/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(settings)
+  })
+
+export const downloadBackup = () => {
+  window.location.href = '/api/app/dashboard/backup'
+}
 
 export interface RestaurantStats {
   todayRevenueHalalas: number
   todayOrdersCount: number
   activeOrders: number
   staffCount: number
+  trend: { date: string; revenue: number; orders: number }[]
 }
 
 export const fetchRestaurantStats = () =>
@@ -511,6 +551,8 @@ export interface PlatformRestaurant {
   type: string
   parentId?: string | null
   status: string
+  subscription?: { plan: string; status: string }
+  features?: string[]
   city?: string | null
   staffCount: number
   createdAt: string
@@ -557,11 +599,18 @@ export const fetchAudit = () => staffApi<{ events: AuditEntry[] }>('/platform/au
 export interface PlatformStats {
   totalRestaurants: number
   totalUsers: number
-  todayPlatformOrders: number
+  totalOrders: number
+  totalRevenue: number
 }
 
+export const fetchHealth = () =>
+  staffApi<{ status: string; uptimeSeconds: number }>('/health', { method: 'GET' })
+
+export const fetchReady = () =>
+  staffApi<{ status: string; checks: { database: string } }>('/readyz', { method: 'GET' })
+
 export const fetchPlatformStats = () =>
-  staffApi<PlatformStats>('/platform/dashboard/stats')
+  staffApi<PlatformStats>('/platform/analytics')
 
 export const getPlatformRestaurant = (id: string) =>
   staffApi<{ restaurant: PlatformRestaurant }>(`/platform/restaurants/${id}`)
@@ -596,4 +645,16 @@ export const updatePlatformRestaurantStaff = (id: string, staffId: string, body:
 export const disablePlatformRestaurantStaff = (id: string, staffId: string) =>
   staffApi<{ user: AdminStaffMember }>(`/platform/restaurants/${id}/staff/${staffId}`, {
     method: 'DELETE',
+  })
+
+export const updatePlatformSubscription = (id: string, body: { plan: string; status: string }) =>
+  staffApi<{ subscription: any }>(`/platform/restaurants/${id}/subscription`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+
+export const updatePlatformFeatures = (id: string, features: string[]) =>
+  staffApi<{ features: string[] }>(`/platform/restaurants/${id}/features`, {
+    method: 'PATCH',
+    body: JSON.stringify({ features }),
   })

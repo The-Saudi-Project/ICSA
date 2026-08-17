@@ -146,6 +146,8 @@ export interface MenuItem {
   prepTimeMinutes?: number | null
   calories?: number | null
   allergens: string[]
+  averageRating?: number | null
+  reviewCount?: number
   /**
    * Whether this can be ordered. A boolean on purpose — the customer surface is
    * never told how many portions remain.
@@ -173,6 +175,7 @@ export interface OrderLineModifier {
 }
 
 export interface OrderLine {
+  menuItemId: string
   nameSnapshot: { en: string; ar?: string }
   unitPriceHalalas: number
   quantity: number
@@ -238,3 +241,18 @@ export const fetchMyOrders = () => api<{ orders: CustomerOrder[] }>('/public/ord
 
 export const cancelOrder = (publicId: string) =>
   api<{ order: CustomerOrder }>(`/public/orders/${publicId}/cancel`, { method: 'POST' })
+
+export const submitReview = (body: {
+  menuItemId: string
+  orderPublicId: string
+  rating: number
+  comment?: string
+  customerName: string
+}) => api<{ review: any }>('/public/reviews', { method: 'POST', body: JSON.stringify(body) })
+
+export const getReviews = (menuItemId: string) =>
+  api<{ reviews: any[] }>(`/public/menu/${menuItemId}/reviews`)
+
+export const fetchRestaurantStatus = () =>
+  api<{ estimatedWaitMinutes: number }>('/public/restaurant/status')
+

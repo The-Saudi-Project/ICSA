@@ -25,7 +25,7 @@ import { env } from './config/env.js'
 import { getContext } from './core/context.js'
 import { logger } from './core/logger.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
-import { apiRateLimit } from './middleware/rateLimit.js'
+import { apiRateLimit, menuRateLimit, orderRateLimit, staffRateLimit } from './middleware/rateLimit.js'
 import { requestContext } from './middleware/requestContext.js'
 import { authRouter } from './modules/auth/auth.routes.js'
 import { healthRouter } from './modules/health/health.routes.js'
@@ -36,6 +36,7 @@ import { platformRouter } from './modules/platform/platform.routes.js'
 import { publicRouter } from './modules/public/public.routes.js'
 import { tableRouter } from './modules/tables/table.routes.js'
 import { appDashboardRouter, platformDashboardRouter } from './modules/dashboard/dashboard.routes.js'
+import { restaurantRouter } from './modules/restaurants/restaurant.routes.js'
 
 export function createApp(): Express {
   const app = express()
@@ -104,14 +105,18 @@ export function createApp(): Express {
 
   // Versioned API surface.
   const v1 = express.Router()
+  // Specific rate limiters for specific routes
+  v1.use('/app/menu', menuRateLimit, menuRouter)
+  v1.use('/app/orders', orderRateLimit, orderRouter)
+  v1.use('/app/staff', staffRateLimit, staffRouter)
+  v1.use('/app/tables', staffRateLimit, tableRouter)
+  v1.use('/app/dashboard', staffRateLimit, appDashboardRouter) // restaurant dashboard
+  v1.use('/app/restaurants', staffRateLimit, restaurantRouter)
+  
+  // Default fallback limiter for the rest
   v1.use(apiRateLimit)
   v1.use('/auth', authRouter)
   v1.use('/public', publicRouter) // customers: table session only, no login
-  v1.use('/app/dashboard', appDashboardRouter) // restaurant dashboard
-  v1.use('/app/tables', tableRouter) // restaurant staff
-  v1.use('/app/menu', menuRouter)
-  v1.use('/app/orders', orderRouter)
-  v1.use('/app/staff', staffRouter)
   v1.use('/platform/dashboard', platformDashboardRouter) // platform dashboard
   v1.use('/platform', platformRouter) // us
   app.use('/api/v1', v1)

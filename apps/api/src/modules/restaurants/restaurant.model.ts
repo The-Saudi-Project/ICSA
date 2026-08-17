@@ -32,8 +32,17 @@ const settingsSchema = new Schema(
       enum: Object.values(OrderType),
       default: [OrderType.DINE_IN],
     },
+    estimatedWaitMinutes: { type: Number, default: 15, min: 0, max: 120 },
   },
   { _id: false },
+)
+
+const subscriptionSchema = new Schema(
+  {
+    plan: { type: String, enum: ['FREE', 'PRO', 'ENTERPRISE'], default: 'FREE' },
+    status: { type: String, enum: ['ACTIVE', 'PAST_DUE', 'CANCELED'], default: 'ACTIVE' },
+  },
+  { _id: false }
 )
 
 const restaurantSchema = new Schema(
@@ -72,6 +81,8 @@ const restaurantSchema = new Schema(
     phone: { type: String, trim: true },
     logoUrl: { type: String, trim: true },
     settings: { type: settingsSchema, default: () => ({}) },
+    subscription: { type: subscriptionSchema, default: () => ({ plan: 'FREE', status: 'ACTIVE' }) },
+    features: { type: [String], default: [] },
   },
   { timestamps: true },
 )

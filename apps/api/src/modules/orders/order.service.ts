@@ -27,6 +27,7 @@ import { writeAudit } from '../../core/audit.js'
 import { getContext, requireContext } from '../../core/context.js'
 import { badRequest, conflict, forbidden, notFound } from '../../core/errors.js'
 import { logger } from '../../core/logger.js'
+import { getIO } from '../../core/socket.js'
 import { requireTenantId, tenantRepo } from '../../core/tenant.js'
 import { AuditAction } from '../audit/auditLog.model.js'
 import { RestaurantModel } from '../restaurants/restaurant.model.js'
@@ -56,6 +57,7 @@ export interface OrderView {
   customerNote?: string | null
   placedAt: Date
   statusHistory?: unknown[]
+  isRush?: boolean
 }
 
 function toOrderView(order: OrderDoc, includeHistory = false): OrderView {
@@ -73,6 +75,7 @@ function toOrderView(order: OrderDoc, includeHistory = false): OrderView {
     currency: order.currencySnapshot,
     customerNote: order.customerNote,
     placedAt: order.placedAt,
+    isRush: order.isRush ?? false,
     ...(includeHistory ? { statusHistory: order.statusHistory } : {}),
   }
 }
@@ -250,6 +253,12 @@ export async function createOrder(
       },
     })
 
+    try {
+      getIO().to(`restaurant_${restaurantId}`).emit('order_created')
+    } catch (err) {
+      logger.warn({ err }, 'failed to emit order_created')
+    }
+
     return { order: view, replayed: false }
   } catch (error) {
     // Nothing was cooked, so nothing should stay reserved. Safe to call with an
@@ -271,6 +280,149 @@ export async function createOrder(
   }
 }
 
+export async function staffCreateOrder(
+  input: CreateOrderInput & { tableId?: string },
+  idempotencyKey: string,
+): Promise<{ order: OrderView; replayed: boolean }> {
+  const context = requireContext()
+  const restaurantId = requireTenantId()
+
+  const requestHash = hashRequest(input)
+
+  let claimed = true
+  try {
+    await IdempotencyKeyModel.create({
+      restaurantId,
+      scope: 'staff.order.create',
+      key: idempotencyKey,
+      requestHash,
+      status: 'IN_PROGRESS',
+      expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_MS),
+    })
+  } catch (error) {
+    if ((error as { code?: number }).code !== 11000) throw error
+    claimed = false
+  }
+
+  if (!claimed) {
+    const existing = await IdempotencyKeyModel.findOne({
+      restaurantId,
+      scope: 'staff.order.create',
+      key: idempotencyKey,
+    })
+
+    if (existing?.status === 'DONE') {
+      if (existing.requestHash !== requestHash) {
+        throw conflict('This idempotency key was already used for a different order')
+      }
+      return { order: existing.responseSnapshot as OrderView, replayed: true }
+    }
+    throw conflict('That order is already being processed.')
+  }
+
+  let reserved: StockClaim[] = []
+
+  try {
+    const restaurant = await RestaurantModel.findById(restaurantId)
+    if (!restaurant) throw notFound('Restaurant not found')
+
+    let table: any = null
+    let sessionId: any = null
+
+    if (input.tableId) {
+      table = await TableModel.findOne({ _id: input.tableId }).setOptions({ unscoped: true })
+      if (!table) throw notFound('Table not found')
+      
+      // Look for an active session to attach it to, so customers see it.
+      const mongoose = await import('mongoose')
+      const activeSession = await mongoose.model('TableSession').findOne({
+        restaurantId,
+        tableId: input.tableId,
+        status: 'ACTIVE'
+      })
+      if (activeSession) sessionId = activeSession._id
+    }
+
+    const settings = restaurant.settings
+
+    const priced = await priceOrder(input, {
+      vatRatePercent: settings.vatRatePercent,
+      pricesIncludeVat: settings.pricesIncludeVat,
+      serviceChargePercent: settings.serviceChargePercent,
+      currency: settings.currency,
+    })
+
+    reserved = await reserveStock(
+      input.items.map((line) => ({ menuItemId: line.menuItemId, quantity: line.quantity })),
+    )
+
+    const { status, paymentStatus } = initialStatusFor(
+      input.paymentMethod,
+      settings.kitchenStartsBeforePayment,
+    )
+
+    const orderNumber = await nextOrderNumber(restaurantId)
+    const invoiceNumber = await nextInvoiceNumber(restaurantId)
+
+    const order = await tenantRepo(OrderModel).create({
+      orderNumber,
+      invoiceNumber,
+      tableId: input.tableId || null,
+      tableSessionId: sessionId,
+      tableLabelSnapshot: table?.label,
+      status,
+      paymentMethod: input.paymentMethod,
+      paymentStatus,
+      items: priced.items,
+      totals: priced.totals,
+      vatRateSnapshotPercent: settings.vatRatePercent,
+      pricesIncludeVatSnapshot: settings.pricesIncludeVat,
+      currencySnapshot: settings.currency,
+      customerNote: input.customerNote,
+      idempotencyKey,
+      statusHistory: [{ to: status, byRole: context.actorRole ?? 'STAFF', byUserId: context.actorUserId, at: new Date() }],
+      placedAt: new Date(),
+    })
+
+    const view = toOrderView(order)
+
+    await IdempotencyKeyModel.updateOne(
+      { restaurantId, scope: 'staff.order.create', key: idempotencyKey },
+      { $set: { status: 'DONE', responseSnapshot: view } },
+    )
+
+    await writeAudit({
+      action: AuditAction.ORDER_CREATED,
+      targetType: 'Order',
+      targetId: order._id.toString(),
+      metadata: {
+        orderNumber,
+        invoiceNumber,
+        tableLabel: table?.label,
+        grandTotalHalalas: priced.totals.grandTotalHalalas,
+        itemCount: priced.items.length,
+      },
+    })
+
+    try {
+      getIO().to(`restaurant_${restaurantId}`).emit('order_created')
+    } catch (err) {
+      logger.warn({ err }, 'failed to emit order_created')
+    }
+
+    return { order: view, replayed: false }
+  } catch (error) {
+    await releaseStock(reserved)
+    await IdempotencyKeyModel.deleteOne({
+      restaurantId,
+      scope: 'staff.order.create',
+      key: idempotencyKey,
+      status: 'IN_PROGRESS',
+    }).catch(() => {})
+    throw error
+  }
+}
+
 /* ── reading ──────────────────────────────────────────────────────────────── */
 
 /** Customer view: only orders belonging to the session presenting the request. */
@@ -284,13 +436,20 @@ export async function getOrderForSession(publicId: string) {
   return toCustomerOrderView(order)
 }
 
-export async function listOrdersForSession() {
+export async function listOrdersForSession(options?: { cursor?: string; limit?: number }) {
   const sessionId = getContext()?.tableSessionId
   if (!sessionId) throw notFound('Order not found')
 
+  const limit = options?.limit ?? 20
+  
+  const query: any = { tableSessionId: sessionId }
+  if (options?.cursor) {
+    query.createdAt = { $lt: new Date(options.cursor) }
+  }
+
   const orders = await tenantRepo(OrderModel).find(
-    { tableSessionId: sessionId },
-    { sort: { createdAt: -1 }, limit: 20 },
+    query,
+    { sort: { createdAt: -1 }, limit },
   )
 
   return orders.map(toCustomerOrderView)
@@ -445,6 +604,14 @@ export async function transitionOrder(
     },
   })
 
+  try {
+    // Need restaurantId from order. Let's cast it or retrieve it from context
+    const restaurantId = requireTenantId()
+    getIO().to(`restaurant_${restaurantId}`).to(`order_${order.publicId}`).emit('order_updated')
+  } catch (err) {
+    logger.warn({ err }, 'failed to emit order_updated')
+  }
+
   return toOrderView(updated, true)
 }
 
@@ -508,4 +675,61 @@ export async function cancelOwnOrder(publicId: string): Promise<CustomerOrderVie
   // the phone — `transitionOrder` returns the full staff view.
   const { id: _internalId, statusHistory: _history, ...customerSafe } = updated
   return customerSafe
+}
+
+export async function toggleRush(publicId: string, isRush: boolean) {
+  const tenantId = requireTenantId()
+  const updated = await tenantRepo(OrderModel).findOneAndUpdate(
+    { publicId },
+    { $set: { isRush } },
+    { new: true }
+  )
+
+  if (!updated) throw notFound('Order not found')
+
+  try {
+    getIO().to(`restaurant_${tenantId}`).emit('order_updated')
+  } catch (err) {
+    logger.warn({ err }, 'failed to emit order_updated')
+  }
+
+  return toOrderView(updated)
+}
+
+export async function refundOrder(publicId: string) {
+  const tenantId = requireTenantId()
+  const order = await tenantRepo(OrderModel).findOne({ publicId })
+  if (!order) throw notFound('Order not found')
+
+  if (order.paymentStatus !== PaymentStatus.PAID) {
+    throw badRequest('Order is not paid, cannot refund')
+  }
+
+  const updated = await tenantRepo(OrderModel).findOneAndUpdate(
+    { _id: order._id },
+    {
+      $set: {
+        paymentStatus: PaymentStatus.REFUNDED,
+        status: OrderStatus.CANCELLED,
+        cancelledAt: new Date(),
+      },
+      $push: {
+        statusHistory: {
+          from: order.status,
+          to: OrderStatus.CANCELLED,
+          byUserId: getContext()?.actorUserId,
+          byRole: getContext()?.actorRole,
+          at: new Date(),
+          reason: 'Manual refund via staff API',
+        },
+      },
+    },
+    { new: true }
+  )
+
+  if (!updated) throw notFound('Order not found')
+
+  getIO().to(`restaurant_${tenantId}`).emit('order_updated', { publicId: updated.publicId })
+
+  return toOrderView(updated)
 }

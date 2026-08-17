@@ -38,8 +38,8 @@ export const PaymentStatus = {
   UNPAID: 'UNPAID',
   CASH_PENDING: 'CASH_PENDING',
   PAID: 'PAID',
-  FAILED: 'FAILED', // Phase 2
-  REFUNDED: 'REFUNDED', // Phase 2
+  FAILED: 'FAILED',
+  REFUNDED: 'REFUNDED',
 } as const
 export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus]
 
@@ -153,6 +153,14 @@ export const KITCHEN_BOARD_STATUSES: readonly OrderStatus[] = [
 export const CASHIER_BOARD_STATUSES: readonly OrderStatus[] = [
   OrderStatus.PLACED,
   OrderStatus.CASH_PENDING,
+  OrderStatus.CONFIRMED,
+  OrderStatus.KITCHEN_ACCEPTED,
+  OrderStatus.PREPARING,
+  OrderStatus.READY,
+]
+
+/** Statuses a waiter screen shows: anything currently cooking or ready to serve. */
+export const WAITER_BOARD_STATUSES: readonly OrderStatus[] = [
   OrderStatus.CONFIRMED,
   OrderStatus.KITCHEN_ACCEPTED,
   OrderStatus.PREPARING,

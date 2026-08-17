@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Testing Checklist</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.3;
+            margin: 0;
+            padding: 1rem;
+            color: #000;
+        }
+        h1 {
+            font-size: 14pt;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+        }
+        h2 {
+            font-size: 12pt;
+            margin-top: 1rem;
+            margin-bottom: 0.3rem;
+            border-bottom: 1px dashed #ccc;
+        }
+        ul {
+            margin: 0;
+            padding-left: 1.2rem;
+            list-style-type: none;
+        }
+        li {
+            margin-bottom: 0.3rem;
+            position: relative;
+        }
+        li::before {
+            content: "[ ]";
+            position: absolute;
+            left: -1.5rem;
+            font-family: monospace;
+            font-size: 11pt;
+        }
+        b {
+            font-size: 10.5pt;
+        }
+        .note {
+            font-size: 9pt;
+            font-style: italic;
+            color: #444;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Print optimization to save paper */
+        @media print {
+            body {
+                font-size: 10pt;
+                line-height: 1.15;
+            }
+            h1 { font-size: 12pt; margin-top: 0; margin-bottom: 0.3rem; }
+            h2 { font-size: 11pt; margin-top: 0.5rem; margin-bottom: 0.2rem; }
+            li { margin-bottom: 0.2rem; }
+            @page { margin: 0.5in; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Verification & Security Checklist</h1>
+    
+    <h2>1. Quick Wins & UI Enhancements</h2>
+    <ul>
+        <li><b>Confetti</b>: Place an order from the cart; verify confetti appears on success.</li>
+        <li><b>"My Orders" Link</b>: Verify it appears in the Customer Header and works.</li>
+        <li><b>Category Jump</b>: On the Menu page, click categories; verify the page scrolls to them.</li>
+        <li><b>Need Help Footer</b>: Verify WhatsApp and Call links appear at the bottom of the customer app.</li>
+        <li><b>Audio Alerts</b>: Enable sound (toggle) in Kitchen Display; verify a chime plays for new orders.</li>
+        <li><b>Keyboard Shortcuts</b>: In Staff Layout, press <code>Shift + C</code> for Cashier, <code>Shift + K</code> for Kitchen.</li>
+        <li><b>Reduced Motion</b>: Set OS to "Reduce Motion"; verify confetti/animations are disabled.</li>
+        <li><b>Estimated Prep Time</b>: Check Kitchen Display to see the sum of prep times for active orders.</li>
+        <li><b>Dashboard Chart</b>: Go to Dashboard; verify the Y-axis (e.g. "SAR 32") is fully visible, not cut off.</li>
+    </ul>
+
+    <h2>2. Cart & Flow Fixes</h2>
+    <ul>
+        <li><b>Item Detail</b>: Add an item with options/modifiers to cart; verify it succeeds without crashing.</li>
+        <li><b>Cart Layout</b>: Open Cart; verify the "Place Order" button and total section look correct and stick to the bottom.</li>
+        <li><b>Quantity Toggles</b>: In Cart, use <code>+</code> and <code>-</code> buttons; verify quantity updates.</li>
+        <li><b>Cart Swipe</b>: Swipe left on a cart item to reveal the delete button.</li>
+        <li><b>Localization</b>: Switch language to Arabic; verify "إضافة المزيد" (Add More) appears in the Cart.</li>
+    </ul>
+
+    <h2>3. Staff & Admin Fixes</h2>
+    <ul>
+        <li><b>Health Monitoring</b>: Check OS Admin -> System Health; verify API Server and Database show as "Connected/OK".</li>
+        <li><b>Data Backup</b>: Check OS Admin -> Settings; click the "Download Backup" button (should trigger a ZIP download or navigation to the backup endpoint).</li>
+    </ul>
+
+    <h2>4. Security & Hardening Tests (Manual)</h2>
+    <div class="note">Perform these in your browser or via Postman/cURL.</div>
+    <ul>
+        <li><b>CSRF / Origin Check (Login)</b>: Open DevTools Console on `localhost:5174`. Run <code>fetch('http://127.0.0.1:4000/api/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({email: 'a', password: 'b'}) })</code>.<br>
+        <i>Expected</i>: Fails with `401 Invalid origin` because `origin` header is missing or incorrect in a manual fetch.</li>
+        <li><b>NoSQL Injection (Auth)</b>: On the staff login screen, enter <code>{"$gt": ""}</code> as the email or password.<br>
+        <i>Expected</i>: The system rejects it (zod validation fails) rather than bypassing authentication.</li>
+        <li><b>Rate Limiting</b>: Repeatedly click "Sign in" with wrong credentials very fast.<br>
+        <i>Expected</i>: You receive a `429 Too Many Requests` error eventually.</li>
+        <li><b>XSS Protection</b>: Add an item to the cart and enter <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> in the "Note for Kitchen" field.<br>
+        <i>Expected</i>: In the Kitchen display, the note is shown as plain text, not executed as an alert.</li>
+    </ul>
+    
+    <script>
+        // Trigger print dialog automatically when opened
+        window.onload = function() {
+            setTimeout(() => {
+                window.print();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

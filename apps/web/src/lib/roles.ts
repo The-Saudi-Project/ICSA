@@ -13,6 +13,7 @@ export const Surface = {
   DASHBOARD: '/dashboard',
   KITCHEN: '/kitchen',
   TILL: '/cashier',
+  WAITER: '/waiter',
   ADMIN: '/admin',
   PLATFORM: '/platform',
 } as const
@@ -25,10 +26,11 @@ export function homeForRole(role: string): string {
       return Surface.DASHBOARD
     case 'KITCHEN':
       return Surface.KITCHEN
+    case 'WAITER':
+      return Surface.WAITER
     case 'PLATFORM_ADMIN':
       return Surface.PLATFORM
     default:
-      // Cashiers and waiters land on the till
       return Surface.TILL
   }
 }
@@ -36,7 +38,10 @@ export function homeForRole(role: string): string {
 export const canUseAdmin = (role?: string): boolean => role === 'OWNER' || role === 'MANAGER'
 
 export const canUseTill = (role?: string): boolean =>
-  role === 'CASHIER' || role === 'WAITER' || role === 'MANAGER' || role === 'OWNER'
+  role === 'CASHIER' || role === 'MANAGER' || role === 'OWNER'
+
+export const canUseWaiter = (role?: string): boolean =>
+  role === 'WAITER' || role === 'MANAGER' || role === 'OWNER'
 
 /** Mirrors the roles the order state machine lets act on kitchen transitions. */
 export const canUseKitchen = (role?: string): boolean =>
@@ -58,6 +63,7 @@ const SURFACE_RULES: readonly { prefix: string; allow: (role?: string) => boolea
   { prefix: Surface.DASHBOARD, allow: canUseAdmin },
   { prefix: Surface.KITCHEN, allow: canUseKitchen },
   { prefix: Surface.TILL, allow: canUseTill },
+  { prefix: Surface.WAITER, allow: canUseWaiter },
 ]
 
 export function mayVisit(role: string | undefined, pathname: string): boolean {

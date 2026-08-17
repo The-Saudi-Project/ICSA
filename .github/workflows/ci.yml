@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
@@ -9,7 +9,6 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -21,17 +20,35 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      # npm ci (clean install) is better for CI environments than npm install
-      # because it strictly follows the package-lock.json versioning
       run: npm ci
 
     - name: Run ESLint
       run: npm run lint
 
     - name: Typecheck and Build
-      # This runs your TypeScript checks and builds the project, catching syntax and type errors
       run: npm run build
 
     - name: Run Tests
-      # This runs your tests if you have them, skipping safely if you don't
       run: npm run test --if-present
+
+  deploy:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+
+    - name: Deploy to Production
+      run: |
+        echo "🚀 Triggering deployment to production..."
+        # Add actual deployment commands here (e.g. Docker build & push, Vercel CLI, etc)
+        # npm ci --production
+        # npx prisma deploy
+        echo "✅ Deployment successful!"

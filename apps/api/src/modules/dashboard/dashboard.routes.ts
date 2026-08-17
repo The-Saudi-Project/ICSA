@@ -17,6 +17,28 @@ appDashboardRouter.get('/stats', async (_req: Request, res: Response, next) => {
   }
 })
 
+appDashboardRouter.get('/backup', async (_req: Request, res: Response, next) => {
+  try {
+    const archiver = (await import('archiver')).default
+    const data = await dashboardService.getRestaurantBackupData()
+    
+    res.setHeader('Content-Type', 'application/zip')
+    res.setHeader('Content-Disposition', 'attachment; filename="restaurant_backup.zip"')
+    
+    const archive = archiver('zip', { zlib: { level: 9 } })
+    archive.pipe(res)
+    
+    archive.append(JSON.stringify(data.orders, null, 2), { name: 'orders.json' })
+    archive.append(JSON.stringify(data.categories, null, 2), { name: 'categories.json' })
+    archive.append(JSON.stringify(data.menuItems, null, 2), { name: 'menuItems.json' })
+    archive.append(JSON.stringify(data.staff, null, 2), { name: 'staff.json' })
+    
+    await archive.finalize()
+  } catch (error) {
+    next(error)
+  }
+})
+
 // Platform dashboard (Super Admin)
 platformDashboardRouter.use(requireAuth, requirePlatformAdmin)
 platformDashboardRouter.get('/stats', async (_req: Request, res: Response, next) => {

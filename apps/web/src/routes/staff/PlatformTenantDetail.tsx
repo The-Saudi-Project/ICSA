@@ -8,6 +8,8 @@ import {
   createPlatformRestaurantStaff,
   updatePlatformRestaurantStaff,
   disablePlatformRestaurantStaff,
+  updatePlatformSubscription,
+  updatePlatformFeatures,
   type AdminStaffMember,
 } from '../../lib/staffApi.js'
 import { Card } from '../../components/ui/Card.js'
@@ -18,7 +20,7 @@ export default function PlatformTenantDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<'settings' | 'staff'>('settings')
+  const [activeTab, setActiveTab] = useState<'settings' | 'staff' | 'billing' | 'features'>('settings')
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['platform', 'restaurant', id] })
 
@@ -123,18 +125,18 @@ export default function PlatformTenantDetail() {
         </div>
 
         {/* Local Tabs */}
-        <div className="flex bg-surface-strong p-1 rounded-2xl border border-border shadow-sm backdrop-blur-3xl w-fit mb-8">
-            {(['settings', 'staff'] as const).map((tab) => (
+        <div className="flex bg-surface-strong p-1 rounded-2xl border border-border shadow-sm backdrop-blur-3xl w-fit mb-8 overflow-x-auto max-w-full">
+            {(['settings', 'staff', 'billing', 'features'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2.5 rounded-xl text-small font-bold capitalize transition-all duration-300 outline-none ${
+                className={`px-5 py-2.5 rounded-xl text-small font-bold capitalize transition-all duration-300 outline-none whitespace-nowrap ${
                   activeTab === tab 
                     ? 'bg-accent text-white shadow-md scale-100' 
                     : 'text-ink-soft hover:text-ink hover:bg-surface-hover scale-95'
                 }`}
               >
-                {tab === 'staff' ? 'Staff & Permissions' : tab}
+                {tab === 'staff' ? 'Staff & Permissions' : tab === 'billing' ? 'Billing & Plan' : tab}
               </button>
             ))}
         </div>
@@ -230,6 +232,87 @@ export default function PlatformTenantDetail() {
                          ))}
                       </tbody>
                     </table>
+                 </div>
+              </Card>
+            </section>
+          )}
+
+          {/* BILLING TAB */}
+          {activeTab === 'billing' && (
+            <section className="animate-slide-up">
+              <Card variant="glass" className="max-w-2xl p-6 sm:p-8">
+                 <h2 className="text-h3 font-bold text-ink mb-6">Subscription & Billing</h2>
+                 <div className="space-y-4">
+                    <div>
+                      <label className="block text-meta font-bold uppercase tracking-[0.12em] text-ink-soft mb-1.5">Plan</label>
+                      <select 
+                        className="w-full bg-surface-hover border border-border rounded-xl py-2.5 px-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash" 
+                        value={restaurant?.subscription?.plan ?? 'FREE'}
+                        onChange={(e) => {
+                          if (window.confirm(`Change plan to ${e.target.value}?`)) {
+                            updatePlatformSubscription(id!, { plan: e.target.value, status: restaurant?.subscription?.status ?? 'ACTIVE' }).then(refresh)
+                          }
+                        }}
+                      >
+                        <option value="FREE">Free</option>
+                        <option value="PRO">Pro</option>
+                        <option value="ENTERPRISE">Enterprise</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-meta font-bold uppercase tracking-[0.12em] text-ink-soft mb-1.5">Status</label>
+                      <select 
+                        className="w-full bg-surface-hover border border-border rounded-xl py-2.5 px-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash" 
+                        value={restaurant?.subscription?.status ?? 'ACTIVE'}
+                        onChange={(e) => {
+                          if (window.confirm(`Change subscription status to ${e.target.value}?`)) {
+                            updatePlatformSubscription(id!, { plan: restaurant?.subscription?.plan ?? 'FREE', status: e.target.value }).then(refresh)
+                          }
+                        }}
+                      >
+                        <option value="ACTIVE">Active</option>
+                        <option value="PAST_DUE">Past Due</option>
+                        <option value="CANCELED">Canceled</option>
+                      </select>
+                    </div>
+                 </div>
+              </Card>
+            </section>
+          )}
+
+          {/* FEATURES TAB */}
+          {activeTab === 'features' && (
+            <section className="animate-slide-up">
+              <Card variant="glass" className="max-w-2xl p-6 sm:p-8">
+                 <h2 className="text-h3 font-bold text-ink mb-6">Feature Flags</h2>
+                 <div className="space-y-4">
+                    {[
+                      { id: 'table_qr', label: 'Table QR Ordering' },
+                      { id: 'pos_access', label: 'POS Terminal Access' },
+                      { id: 'advanced_reports', label: 'Advanced Reporting' },
+                      { id: 'kitchen_display', label: 'Kitchen Display System' }
+                    ].map(feature => {
+                      const enabled = restaurant?.features?.includes(feature.id) ?? false
+                      return (
+                        <div key={feature.id} className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-surface-hover/30">
+                          <span className="text-body font-semibold text-ink">{feature.label}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className={enabled ? 'text-status-success bg-status-success-wash' : 'text-ink-soft bg-surface-hover'}
+                            onClick={() => {
+                              const current = restaurant?.features ?? []
+                              const updated = enabled 
+                                ? current.filter(f => f !== feature.id)
+                                : [...current, feature.id]
+                              updatePlatformFeatures(id!, updated).then(refresh)
+                            }}
+                          >
+                            {enabled ? 'Enabled' : 'Disabled'}
+                          </Button>
+                        </div>
+                      )
+                    })}
                  </div>
               </Card>
             </section>

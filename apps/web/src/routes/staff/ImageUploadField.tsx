@@ -17,6 +17,7 @@
  */
 
 import { useState } from 'react'
+import imageCompression from 'browser-image-compression'
 import { Button } from '../../components/ui/Button.js'
 import { requestUploadCredentials, uploadImageToProvider } from '../../lib/staffApi.js'
 
@@ -35,16 +36,23 @@ export function ImageUploadField({
   /** A local preview so the picture appears while the upload is still running. */
   const [preview, setPreview] = useState<string | null>(null)
 
-  async function handleFile(file: File) {
+  async function handleFile(originalFile: File) {
     setError(null)
     setBusy(true)
 
     // Revoked in every exit path below; a preview that outlives the component
     // would hold the whole image in memory for the life of the tab.
-    const objectUrl = URL.createObjectURL(file)
+    const objectUrl = URL.createObjectURL(originalFile)
     setPreview(objectUrl)
 
     try {
+      // Compress the image locally to save bandwidth
+      const file = await imageCompression(originalFile, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1600,
+        useWebWorker: true,
+      })
+
       const credentials = await requestUploadCredentials('menu-item')
 
       // Checked here as well as at the host, so an owner on a slow connection
@@ -85,7 +93,7 @@ export function ImageUploadField({
       <div className="flex items-start gap-4">
         <div className="size-24 shrink-0 overflow-hidden rounded-xl bg-surface-strong ring-1 ring-border grid place-items-center">
           {shown ? (
-            <img src={shown} alt="" className="size-full object-cover" />
+            <img src={shown} alt="Upload preview" className="size-full object-cover" />
           ) : (
             <svg
               className="size-8 text-ink-faint"

@@ -227,6 +227,7 @@ export interface UnscopedRepo<TDoc> {
     options?: Record<string, unknown>,
   ): Promise<HydratedDocument<TDoc> | null>
   deleteOne(filter: FilterQuery<TDoc>): Promise<DeleteResult>
+  aggregate<TResult = Record<string, unknown>>(pipeline: PipelineStage[]): Promise<TResult[]>
 }
 
 /**
@@ -271,6 +272,9 @@ export function unscoped<TDoc>(model: Model<TDoc>): UnscopedRepo<TDoc> {
     async deleteOne(filter) {
       const result = await model.deleteOne(filter).setOptions({ unscoped: true }).exec()
       return { deletedCount: result.deletedCount }
+    },
+    async aggregate<TResult = Record<string, unknown>>(pipeline: PipelineStage[]) {
+      return model.aggregate<TResult>(pipeline).exec()
     },
   }
 }

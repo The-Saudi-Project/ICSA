@@ -366,6 +366,19 @@
     background: var(--color-accent-wash);
     color: var(--color-ink);
   }
+
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    .print-only {
+      display: block !important;
+    }
+    body, html {
+      background: white !important;
+      color: black !important;
+    }
+  }
 }
 
 /* ============================================================================
@@ -506,6 +519,16 @@
     animation: slide-up 400ms var(--ease-bouncy);
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .ticket-enter,
+    .stagger > *,
+    .animate-slide-up,
+    .animate-fade-in {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
   /* ── Animations ─────────────────────────────────────────────────────────── */
 
   @keyframes slide-up {
@@ -586,7 +609,7 @@
       background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
   }
   @media (prefers-reduced-motion: reduce) {
-    .animate-slide-up, .animate-fade-in, .animate-shimmer, .stagger > *, .skeleton::after {
+    .animate-slide-up, .animate-fade-in, .animate-shimmer, .stagger > *, .skeleton::after, .ticket-enter {
       animation: none !important; opacity: 1; transform: none;
     }
   }

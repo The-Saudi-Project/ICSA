@@ -37,6 +37,40 @@ function fingerprint(req: Request) {
 
 export const authRouter: Router = Router()
 
+/**
+ * CSRF Protection Middleware.
+ * Enforces that state-changing requests originate from our own application by
+ * verifying the Origin or Referer header matches expected values.
+ */
+function requireValidOrigin(req: Request, res: Response, next: import('express').NextFunction) {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    return next()
+  }
+  
+  const origin = req.headers.origin
+  const referer = req.headers.referer
+
+  // If both are completely missing, reject. Browsers send at least one for POST.
+  if (!origin && !referer) {
+    throw unauthenticated('Missing origin verification')
+  }
+
+  // Ensure origin matches the expected web URL in production (or localhost in dev)
+  const expectedOrigin = env.isProduction ? env.WEB_URL : 'http://localhost'
+  
+  if (origin && !origin.startsWith(expectedOrigin)) {
+    throw unauthenticated('Invalid origin')
+  }
+  
+  if (!origin && referer && !referer.startsWith(expectedOrigin)) {
+    throw unauthenticated('Invalid referer')
+  }
+
+  next()
+}
+
+authRouter.use(requireValidOrigin)
+
 authRouter.post(
   '/login',
   loginRateLimit,

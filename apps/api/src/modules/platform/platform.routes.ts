@@ -134,6 +134,8 @@ platformRouter.get(
         vatNumber: restaurant.vatNumber,
         crNumber: restaurant.crNumber,
         settings: restaurant.settings,
+        subscription: restaurant.subscription,
+        features: restaurant.features,
         createdAt: restaurant.createdAt,
       },
     })
@@ -156,6 +158,8 @@ platformRouter.patch(
         vatNumber: restaurant.vatNumber,
         crNumber: restaurant.crNumber,
         settings: restaurant.settings,
+        subscription: restaurant.subscription,
+        features: restaurant.features,
         createdAt: restaurant.createdAt,
       },
     })
@@ -274,4 +278,43 @@ platformRouter.get(
     const events = await platformService.listPlatformAudit(req.validatedQuery!)
     res.status(200).json({ events, count: events.length })
   },
+)
+
+platformRouter.get(
+  '/analytics',
+  async (_req: Request, res: Response) => {
+    const analytics = await platformService.getPlatformAnalytics()
+    res.status(200).json(analytics)
+  }
+)
+
+const subscriptionSchema = z.object({
+  plan: z.enum(['FREE', 'PRO', 'ENTERPRISE']),
+  status: z.enum(['ACTIVE', 'PAST_DUE', 'CANCELED']),
+})
+
+platformRouter.patch(
+  '/restaurants/:id/subscription',
+  validate({ params: idParamsSchema, body: subscriptionSchema }),
+  async (req: Request, res: Response) => {
+    const restaurant = await platformService.updateSubscription(String(req.params.id), req.body)
+    res.status(200).json({
+      subscription: restaurant.subscription
+    })
+  }
+)
+
+const featuresSchema = z.object({
+  features: z.array(z.string()),
+})
+
+platformRouter.patch(
+  '/restaurants/:id/features',
+  validate({ params: idParamsSchema, body: featuresSchema }),
+  async (req: Request, res: Response) => {
+    const restaurant = await platformService.updateFeatures(String(req.params.id), req.body.features)
+    res.status(200).json({
+      features: restaurant.features
+    })
+  }
 )

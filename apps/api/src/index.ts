@@ -9,6 +9,7 @@
 import { createApp } from './app.js'
 import { env } from './config/env.js'
 import { logger } from './core/logger.js'
+import { initSocket } from './core/socket.js'
 import { connectDb, disconnectDb } from './db/mongoose.js'
 
 const SHUTDOWN_TIMEOUT_MS = 10_000
@@ -20,6 +21,8 @@ async function main(): Promise<void> {
   const server = app.listen(env.PORT, () => {
     logger.info({ port: env.PORT, env: env.NODE_ENV }, 'api listening')
   })
+
+  initSocket(server)
 
   const shutdown = (signal: string): void => {
     logger.info({ signal }, 'shutting down')

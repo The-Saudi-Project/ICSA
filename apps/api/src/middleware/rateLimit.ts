@@ -56,6 +56,24 @@ export const apiRateLimit = build({
   limit: 300,
 })
 
+/** Menu fetching is highly cached and read-heavy. */
+export const menuRateLimit = build({
+  windowMs: 60 * 1000,
+  limit: 600,
+})
+
+/** Order placement and manipulation. Lower limit to prevent spam. */
+export const orderRateLimit = build({
+  windowMs: 60 * 1000,
+  limit: 60,
+})
+
+/** Staff operations. */
+export const staffRateLimit = build({
+  windowMs: 60 * 1000,
+  limit: 200,
+})
+
 /**
  * Table-token exchange, limited per IP.
  *

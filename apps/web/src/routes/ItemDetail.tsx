@@ -2,10 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { Price } from '../components/Price.js'
-import { fetchMenu, type MenuModifierGroup, type MenuModifierOption } from '../lib/api.js'
+import { fetchMenu, getReviews, type MenuModifierGroup, type MenuModifierOption } from '../lib/api.js'
 import { addToCart } from '../lib/cart.js'
 import { Button } from '../components/ui/Button.js'
 import { Input } from '../components/ui/Input.js'
+import { useI18n } from '../lib/i18n.js'
+import { useLongPress } from '../hooks/useLongPress.js'
+import { useToast } from '../components/ToastContext.js'
 
 type Selection = Record<string, string[]>
 
@@ -16,6 +19,11 @@ export default function ItemDetail() {
   const [quantity, setQuantity] = useState(1)
   const [note, setNote] = useState('')
   const [mounted, setMounted] = useState(false)
+  const { t, locale } = useI18n()
+  const { showToast } = useToast()
+
+  const minusPress = useLongPress(() => setQuantity((q) => Math.max(1, q - 1)))
+  const plusPress = useLongPress(() => setQuantity((q) => Math.min(50, q + 1)))
 
   useEffect(() => {
     setMounted(true)
@@ -31,6 +39,14 @@ export default function ItemDetail() {
     () => data?.categories.flatMap((c) => c.items).find((i) => i.id === id),
     [data, id],
   )
+
+  const { data: reviewsData } = useQuery({
+    queryKey: ['reviews', id],
+    queryFn: () => getReviews(id),
+    enabled: !!item,
+  })
+  
+  const reviews = reviewsData?.reviews ?? []
 
   const chosen = useMemo(() => {
     if (!item) return []
@@ -48,14 +64,14 @@ export default function ItemDetail() {
     return (
       <main className="bg-ground flex min-h-dvh items-center justify-center px-4">
         <div className="bg-surface border border-border shadow-md rounded-2xl max-w-sm px-8 py-10 text-center animate-fade-in">
-          <h1 className="text-h2">Item unavailable</h1>
-          <p className="mt-3 text-body text-ink-soft">It may have sold out or been removed.</p>
+          <h1 className="text-h2">{t('itemUnavailable')}</h1>
+          <p className="mt-3 text-body text-ink-soft">{t('soldOutOrRemoved')}</p>
           <Button
             variant="primary"
             onClick={() => void navigate('/menu', { replace: true })}
             className="mt-6 w-full"
           >
-            Back to menu
+            {t('backToMenu')}
           </Button>
         </div>
       </main>
@@ -86,6 +102,10 @@ export default function ItemDetail() {
 
   function add() {
     addToCart(item!, chosen, quantity, note.trim() || undefined)
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(50)
+    }
+    showToast(t('addedToCart', item!.name[locale] ?? item!.name.en))
     void navigate('/menu', { replace: true })
   }
 
@@ -99,7 +119,7 @@ export default function ItemDetail() {
             type="button"
             onClick={() => void navigate(-1)}
             className="pressable flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-white border border-white/10 shadow-sm"
-            aria-label="Back to menu"
+            aria-label={t('backToMenu')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
@@ -112,7 +132,7 @@ export default function ItemDetail() {
           {item.imageUrl ? (
             <img
               src={item.imageUrl}
-              alt={item.name.en}
+              alt={item.name[locale] ?? item.name.en}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -128,10 +148,17 @@ export default function ItemDetail() {
 
         {/* Content Section (Sliding up naturally) */}
         <div className="px-5 -mt-16 relative z-10 bg-ground rounded-t-3xl pt-8 pb-10">
-          <h1 className="text-h1 text-ink">{item.name.en}</h1>
+          <h1 className="text-h1 text-ink">{item.name[locale] ?? item.name.en}</h1>
+          
+          {item.reviewCount ? (
+            <div className="flex items-center gap-2 mt-2">
+               <span className="text-accent font-bold text-lg">★ {item.averageRating}</span>
+               <span className="text-ink-faint text-sm">({item.reviewCount} reviews)</span>
+            </div>
+          ) : null}
 
-          {item.description?.en ? (
-            <p className="mt-2 max-w-prose text-body text-ink-soft leading-relaxed">{item.description.en}</p>
+          {(item.description?.[locale] ?? item.description?.en) ? (
+            <p className="mt-2 max-w-prose text-body text-ink-soft leading-relaxed">{item.description?.[locale] ?? item.description?.en}</p>
           ) : null}
 
           <div className="mt-4 flex items-center gap-3">
@@ -144,12 +171,12 @@ export default function ItemDetail() {
               <div className="flex flex-wrap gap-2">
                 {item.prepTimeMinutes != null ? (
                   <span className="tnum rounded-lg bg-surface border border-border px-3 py-1.5 text-small font-medium text-ink-soft shadow-sm">
-                    About {item.prepTimeMinutes} min
+                    {t('aboutMin', item.prepTimeMinutes)}
                   </span>
                 ) : null}
                 {item.calories != null ? (
                   <span className="tnum rounded-lg bg-surface border border-border px-3 py-1.5 text-small font-medium text-ink-soft shadow-sm">
-                    {item.calories} kcal
+                    {t('kcal', item.calories)}
                   </span>
                 ) : null}
                 {item.allergens.map((a) => (
@@ -170,8 +197,7 @@ export default function ItemDetail() {
                 restaurant's own claim".
               */}
               <p className="mt-3 text-caption text-ink-faint leading-relaxed">
-                Preparation time, calories and allergen information are provided by the restaurant.
-                If you have an allergy, please speak to a member of staff.
+                {t('allergyNotice')}
               </p>
             </div>
           ) : null}
@@ -183,10 +209,10 @@ export default function ItemDetail() {
             <fieldset key={group.key} className="mt-8 stagger">
               <legend className="flex w-full items-baseline justify-between gap-3 mb-4">
                 <span className="text-h3 font-bold text-ink">
-                  {group.name.en}
+                  {group.name[locale] ?? group.name.en}
                 </span>
                 <span className="text-small font-semibold px-2 py-1 rounded-md bg-surface border border-border text-ink-soft shadow-sm">
-                  {group.required ? 'Required' : group.maxSelect > 1 ? `Up to ${group.maxSelect}` : 'Optional'}
+                  {group.required ? t('required') : group.maxSelect > 1 ? t('upTo', group.maxSelect) : t('optional')}
                 </span>
               </legend>
 
@@ -195,21 +221,26 @@ export default function ItemDetail() {
                   const picked = (selection[group.key] ?? []).includes(option.key)
                   return (
                     <li key={option.key}>
-                      <button
-                        type="button"
-                        onClick={() => toggle(group, option)}
-                        aria-pressed={picked}
+                      <label
                         className={[
-                          'pressable flex w-full items-center justify-between gap-4 rounded-2xl px-4 py-4 text-start transition-all duration-200 border shadow-sm',
+                          'pressable flex w-full items-center justify-between gap-4 rounded-2xl px-4 py-4 text-start transition-all duration-200 border shadow-sm cursor-pointer',
                           picked
                             ? 'bg-accent-wash border-accent ring-1 ring-accent'
                             : 'bg-surface hover:bg-surface-hover border-border',
                         ].join(' ')}
                       >
+                        <input
+                          type={group.maxSelect === 1 ? 'radio' : 'checkbox'}
+                          name={group.key}
+                          checked={picked}
+                          onChange={() => toggle(group, option)}
+                          className="sr-only"
+                        />
                         <span className="flex items-center gap-4">
                           <span
                             className={[
-                              'grid size-6 shrink-0 place-items-center rounded-full border-2 transition-all duration-200',
+                              'grid size-6 shrink-0 place-items-center transition-all duration-200 border-2',
+                              group.maxSelect === 1 ? 'rounded-full' : 'rounded-lg',
                               picked
                                 ? 'border-accent bg-accent'
                                 : 'border-border-strong',
@@ -221,14 +252,14 @@ export default function ItemDetail() {
                               </svg>
                             ) : null}
                           </span>
-                          <span className="text-body font-medium">{option.name.en}</span>
+                          <span className="text-body font-medium">{option.name[locale] ?? option.name.en}</span>
                         </span>
                         {option.priceDeltaHalalas > 0 ? (
                           <span className="tnum shrink-0 text-small font-bold text-gold">
                             +<Price halalas={option.priceDeltaHalalas} />
                           </span>
                         ) : null}
-                      </button>
+                      </label>
                     </li>
                   )
                 })}
@@ -236,16 +267,33 @@ export default function ItemDetail() {
             </fieldset>
           ))}
 
-          {/* Note */}
           <div className="mt-10">
              <Input 
-                label="Special Instructions" 
-                placeholder="No onions, extra sauce..." 
+                label={t('specialInstructions')} 
+                placeholder={t('specialInstructionsPlaceholder')} 
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={200}
              />
           </div>
+
+          {/* Reviews List */}
+          {reviews.length > 0 && (
+            <div className="mt-12 pt-8 border-t border-border">
+              <h3 className="text-h3 font-bold text-ink mb-6">Customer Reviews</h3>
+              <ul className="space-y-6">
+                {reviews.map((r: any, idx: number) => (
+                  <li key={idx} className="bg-surface p-4 rounded-2xl border border-border/50">
+                    <div className="flex justify-between items-start mb-2">
+                       <span className="font-bold text-ink">{r.customerName}</span>
+                       <span className="text-accent font-bold">★ {r.rating}</span>
+                    </div>
+                    {r.comment && <p className="text-ink-soft italic text-sm">{r.comment}</p>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 
@@ -254,10 +302,11 @@ export default function ItemDetail() {
         <div className="mx-auto max-w-2xl px-4 pb-4">
           <div className="bg-ground/95 backdrop-blur-xl border border-border shadow-lg rounded-2xl p-3 sm:p-4 flex items-center gap-2 sm:gap-4 pointer-events-auto animate-slide-up">
             {/* Quantity stepper */}
-            <div className="flex items-center rounded-xl border border-border bg-surface overflow-hidden shadow-sm shrink-0">
+            <div className="flex items-center rounded-xl border border-border bg-surface overflow-hidden shadow-sm shrink-0 select-none">
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                {...minusPress}
                 disabled={quantity === 1}
                 aria-label="One fewer"
                 className="pressable flex items-center justify-center h-12 w-10 sm:w-12 text-h2 disabled:text-border-strong disabled:bg-surface-hover transition-colors"
@@ -268,6 +317,7 @@ export default function ItemDetail() {
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.min(50, q + 1))}
+                {...plusPress}
                 aria-label="One more"
                 className="pressable flex items-center justify-center h-12 w-10 sm:w-12 text-h2 transition-colors hover:bg-surface-hover"
               >
@@ -288,10 +338,10 @@ export default function ItemDetail() {
             >
               <span className="truncate whitespace-nowrap text-sm sm:text-base">
                 {item.isSoldOut
-                  ? 'Sold out'
+                  ? t('soldOut')
                   : unsatisfied.length > 0
-                    ? `Select ${unsatisfied[0]!.name.en}`
-                    : 'Add to Order'}
+                    ? t('selectRequired', unsatisfied[0]!.name[locale] ?? unsatisfied[0]!.name.en)
+                    : t('addToOrder')}
               </span>
               {!item.isSoldOut && unsatisfied.length === 0 ? (
                 <Price halalas={unitTotal * quantity} className="font-bold shrink-0 text-sm sm:text-base" />

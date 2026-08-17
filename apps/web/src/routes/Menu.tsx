@@ -1,16 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { Price } from '../components/Price.js'
-import { fetchMenu, type MenuCategory, type MenuItem } from '../lib/api.js'
+import { fetchMenu, fetchRestaurantStatus, type MenuCategory, type MenuItem } from '../lib/api.js'
 import { addToCart, cartCount, cartTotal, useCart } from '../lib/cart.js'
 import { getSession } from '../lib/session.js'
 import { Skeleton } from '../components/ui/Skeleton.js'
 import { Button } from '../components/ui/Button.js'
 import { useState } from 'react'
+import { useI18n } from '../lib/i18n.js'
+import { usePullToRefresh } from '../hooks/usePullToRefresh.js'
 
 export default function Menu() {
   const session = getSession()
   const cart = useCart()
+  const { t, locale, setLocale } = useI18n()
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['menu'],
@@ -18,28 +21,78 @@ export default function Menu() {
     staleTime: 30_000,
   })
 
+  const { refreshing, pullProgress } = usePullToRefresh(async () => {
+    await refetch()
+  })
+
+  const { data: statusData } = useQuery({
+    queryKey: ['restaurantStatus'],
+    queryFn: fetchRestaurantStatus,
+    refetchInterval: 30_000,
+  })
+
   const [search, setSearch] = useState('')
 
   const count = cartCount(cart)
 
   return (
-    <div className="min-h-dvh bg-ground transition-colors duration-300">
+    <div className="min-h-dvh bg-ground transition-colors duration-300 relative overflow-hidden">
+      
+      {/* Pull to refresh indicator */}
+      <div 
+        className="absolute top-0 left-0 right-0 flex justify-center z-30 pointer-events-none transition-opacity duration-200"
+        style={{ 
+          transform: `translateY(${Math.max(-40, pullProgress * 40 - 40)}px)`,
+          opacity: pullProgress > 0 ? 1 : 0
+        }}
+      >
+        <div className="mt-4 bg-surface shadow-md border border-border rounded-full p-2 text-accent flex items-center justify-center">
+          <svg 
+            className={`w-6 h-6 ${refreshing ? 'animate-spin text-status-success' : ''}`} 
+            style={{ transform: `rotate(${pullProgress * 360}deg)` }}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </div>
+      </div>
+
       {/* Premium Header */}
       <header className="sticky top-0 z-20 bg-ground/80 backdrop-blur-xl border-b border-border shadow-sm">
         <div className="mx-auto max-w-2xl px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-h2 text-ink">
-                {session?.restaurant.name.en ?? 'Menu'}
+                {session?.restaurant.name[locale] ?? session?.restaurant.name.en ?? t('menu')}
               </h1>
               {session?.table.label ? (
                 <div className="mt-1 flex items-center gap-2">
                   <span className="flex h-2 w-2 rounded-full bg-status-success animate-pulse"></span>
                   <span className="text-small text-ink-soft font-semibold">
-                    Table {session.table.label}
+                    {t('table')} {session.table.label}
                   </span>
+                  {statusData?.estimatedWaitMinutes ? (
+                    <>
+                      <span className="text-ink-faint mx-1">•</span>
+                      <span className="text-small text-ink-soft font-semibold flex items-center gap-1">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        Wait: ~{statusData.estimatedWaitMinutes}m
+                      </span>
+                    </>
+                  ) : null}
                 </div>
               ) : null}
+            </div>
+            <div className="flex items-center gap-3">
+              <Link to="/my-orders" className="text-small font-bold text-ink-soft hover:text-ink transition-colors px-3 py-1.5 rounded-lg bg-surface-strong">
+                {t('myOrders') ?? 'My Orders'}
+              </Link>
+              <button 
+                onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
+                className="text-small font-bold text-ink-soft hover:text-ink transition-colors px-3 py-1.5 rounded-lg bg-surface-strong"
+              >
+                {locale === 'ar' ? 'English' : 'عربي'}
+              </button>
             </div>
           </div>
           
@@ -47,15 +100,32 @@ export default function Menu() {
           <div className="mt-4 relative">
             <input 
               type="text" 
-              placeholder="Search the menu..." 
+              placeholder={t('searchMenu')} 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-surface-hover border border-border rounded-xl py-2.5 pl-10 pr-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash transition-all"
+              className="w-full bg-surface-hover border border-border rounded-xl py-2.5 px-10 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash transition-all"
             />
-            <svg className="absolute left-3 top-3 h-5 w-5 text-ink-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="absolute start-3 top-3 h-5 w-5 text-ink-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
+          
+          {/* Category Quick Jump */}
+          {!isPending && data?.categories && data.categories.length > 0 && (
+            <div className="mt-4 -mx-4 px-4 overflow-x-auto hide-scrollbar flex gap-2 pb-1">
+              {data.categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    document.getElementById(`category-${cat.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }}
+                  className="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-hover border border-border text-small font-semibold text-ink-soft hover:text-ink hover:bg-surface-strong transition-colors"
+                >
+                  {cat.name[locale] ?? cat.name.en}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
@@ -71,31 +141,33 @@ export default function Menu() {
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
-            <h2 className="text-h2">Menu Unavailable</h2>
+            <h2 className="text-h2">{t('menuUnavailable')}</h2>
             <p className="mt-2 text-body text-ink-soft">
-              Please check your connection and try again.
+              {t('checkConnection')}
             </p>
             <Button variant="primary" onClick={() => void refetch()} className="mt-6">
-              Try again
+              {t('tryAgain')}
             </Button>
           </div>
         ) : null}
 
         {data?.categories.length === 0 ? (
           <div className="pt-24 text-center animate-fade-in">
-            <h2 className="text-h2">No items found</h2>
+            <h2 className="text-h2">{t('noItemsFound')}</h2>
             <p className="mt-2 text-body text-ink-soft">
-              The restaurant is updating their menu. Check back soon.
+              {t('updatingMenu')}
             </p>
           </div>
         ) : null}
 
         <div className="stagger mt-6 space-y-10">
           {data?.categories.map((category) => {
-            const filteredItems = category.items.filter(item => 
-              item.name.en.toLowerCase().includes(search.toLowerCase()) || 
-              (item.description?.en && item.description.en.toLowerCase().includes(search.toLowerCase()))
-            )
+            const filteredItems = category.items.filter(item => {
+              const name = item.name[locale] ?? item.name.en;
+              const desc = item.description?.[locale] ?? item.description?.en;
+              return name.toLowerCase().includes(search.toLowerCase()) || 
+                     (desc && desc.toLowerCase().includes(search.toLowerCase()));
+            })
 
             if (filteredItems.length === 0 && search) return null
 
@@ -103,6 +175,15 @@ export default function Menu() {
               <Category key={category.id} category={{...category, items: filteredItems}} />
             )
           })}
+        </div>
+
+        {/* Need Help Footer */}
+        <div className="mt-20 pt-10 border-t border-border flex flex-col items-center justify-center text-center pb-12">
+          <div className="flex size-12 items-center justify-center rounded-full bg-surface shadow-sm border border-border mb-4 text-ink-soft">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          </div>
+          <h3 className="text-h3 font-bold text-ink">Need Assistance?</h3>
+          <p className="mt-2 text-body text-ink-soft">Speak to a member of our staff if you need help ordering or have any questions.</p>
         </div>
       </main>
 
@@ -118,7 +199,7 @@ export default function Menu() {
                 <span className="flex size-8 items-center justify-center rounded-full bg-white/20 text-small font-bold">
                   {count}
                 </span>
-                <span className="text-body font-semibold">View Order</span>
+                <span className="text-body font-semibold">{t('viewOrder')}</span>
               </div>
               <Price halalas={cartTotal(cart)} className="font-semibold text-h3" />
             </Link>
@@ -130,11 +211,12 @@ export default function Menu() {
 }
 
 function Category({ category }: { category: MenuCategory }) {
+  const { locale } = useI18n()
   return (
-    <section>
-      <div className="sticky top-[108px] z-10 bg-ground/95 backdrop-blur-md py-3 -mx-4 px-4 border-b border-border shadow-sm">
+    <section id={`category-${category.id}`} className="scroll-mt-[160px]">
+      <div className="sticky top-[150px] z-10 bg-ground/95 backdrop-blur-md py-3 -mx-4 px-4 border-b border-border shadow-sm">
         <h2 className="text-h3 font-bold text-ink">
-          {category.name.en}
+          {category.name[locale] ?? category.name.en}
         </h2>
       </div>
 
@@ -148,6 +230,7 @@ function Category({ category }: { category: MenuCategory }) {
 }
 
 function Item({ item }: { item: MenuItem }) {
+  const { t, locale } = useI18n()
   /**
    * Only a *required* group forces a trip to the detail screen. The server
    * rejects an order line that skips one (`pricing.ts`), so quick-adding such an
@@ -159,6 +242,9 @@ function Item({ item }: { item: MenuItem }) {
 
   function quickAdd() {
     addToCart(item, [])
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(50) // Short vibration for haptic feedback
+    }
     setAdded(true)
     window.setTimeout(() => setAdded(false), 1400)
   }
@@ -177,18 +263,18 @@ function Item({ item }: { item: MenuItem }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2">
             <h3 className="text-body font-bold text-ink group-hover:text-accent transition-colors">
-              {item.name.en}
+              {item.name[locale] ?? item.name.en}
             </h3>
             {item.isSoldOut ? (
               <span className="mt-0.5 shrink-0 rounded-md bg-surface-strong px-2 py-0.5 text-caption font-bold uppercase tracking-wide text-ink-soft ring-1 ring-border">
-                Sold out
+                {t('soldOut')}
               </span>
             ) : null}
           </div>
 
-          {item.description?.en ? (
+          {(item.description?.[locale] ?? item.description?.en) ? (
             <p className="mt-1 line-clamp-2 text-small text-ink-soft leading-snug">
-              {item.description.en}
+              {item.description?.[locale] ?? item.description?.en}
             </p>
           ) : null}
 
@@ -227,7 +313,7 @@ function Item({ item }: { item: MenuItem }) {
             // greyed button invites tapping. The dish stays readable so the
             // customer knows it exists and can ask staff.
             <span className="rounded-lg px-3 py-1.5 text-small font-semibold text-ink-faint">
-              Unavailable
+              {t('unavailable')}
             </span>
           ) : needsChoices ? (
             <Link
@@ -235,7 +321,7 @@ function Item({ item }: { item: MenuItem }) {
               className="btn-gradient pressable px-3 py-1.5 text-small"
               aria-label={`Choose options for ${item.name.en}`}
             >
-              Choose
+              {t('choose')}
             </Link>
           ) : (
             <Button
@@ -244,7 +330,7 @@ function Item({ item }: { item: MenuItem }) {
               onClick={quickAdd}
               aria-label={`Add ${item.name.en} to the order`}
             >
-              {added ? 'Added' : 'Add'}
+              {added ? t('added') : t('add')}
             </Button>
           )}
         </div>
@@ -263,6 +349,7 @@ function Item({ item }: { item: MenuItem }) {
  * is shown and the decision is actually made.
  */
 function ItemFacts({ item }: { item: MenuItem }) {
+  const { t } = useI18n()
   const hasFacts =
     item.prepTimeMinutes != null || item.calories != null || item.allergens.length > 0
   if (!hasFacts) return null
@@ -274,7 +361,7 @@ function ItemFacts({ item }: { item: MenuItem }) {
 
       {item.allergens.length > 0 ? (
         <span className="text-status-warning font-medium">
-          Contains: {item.allergens.join(', ')}
+          {t('contains')} {item.allergens.join(', ')}
         </span>
       ) : null}
     </div>

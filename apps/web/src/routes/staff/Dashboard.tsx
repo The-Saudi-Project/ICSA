@@ -4,6 +4,7 @@ import { fetchRestaurantStats, getStaffUser } from '../../lib/staffApi.js'
 import { formatHalalas } from '@rw/shared'
 import { Card } from '../../components/ui/Card.js'
 import { Skeleton } from '../../components/ui/Skeleton.js'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 export default function Dashboard() {
   const stats = useQuery({ queryKey: ['dashboard', 'stats'], queryFn: fetchRestaurantStats })
@@ -125,6 +126,37 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      {/* Analytics Chart */}
+      {!stats.isPending && !stats.error && stats.data?.trend && (
+        <section className="relative z-10 mt-12">
+          <div className="flex items-center gap-4 mb-6">
+            <h2 className="text-h3 font-bold text-ink tracking-tight">Revenue Trend (Last 7 Days)</h2>
+            <div className="h-px bg-border flex-1 opacity-50"></div>
+          </div>
+          <Card variant="glass" className="p-6 h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={stats.data.trend} margin={{ top: 20, right: 20, left: 10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-strong)" />
+                <XAxis dataKey="date" stroke="var(--color-ink-faint)" tick={{ fill: 'var(--color-ink-faint)' }} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--color-ink-faint)" tick={{ fill: 'var(--color-ink-faint)' }} tickLine={false} axisLine={false} width={80} tickFormatter={(value) => `SAR ${value}`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'var(--color-surface-strong)', borderRadius: '12px', border: '1px solid var(--color-border)' }}
+                  itemStyle={{ color: 'var(--color-ink)' }}
+                  formatter={(value) => [`SAR ${(value as number).toFixed(2)}`, 'Revenue']}
+                />
+                <Area type="monotone" dataKey="revenue" stroke="var(--color-accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+        </section>
+      )}
 
       {/* Quick Actions */}
       <section className="relative z-10 mt-16">

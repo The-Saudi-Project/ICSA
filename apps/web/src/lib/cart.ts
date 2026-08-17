@@ -19,10 +19,10 @@ export interface CartLine {
   /** Stable key: same item with different modifiers is a different line. */
   lineId: string
   menuItemId: string
-  name: string
+  name: { en: string; ar?: string }
   quantity: number
   unitPriceHalalas: number
-  modifiers: { groupKey: string; optionKey: string; name: string; priceDeltaHalalas: number }[]
+  modifiers: { groupKey: string; optionKey: string; name: { en: string; ar?: string }; priceDeltaHalalas: number }[]
   note?: string
 }
 
@@ -33,7 +33,7 @@ const listeners = new Set<() => void>()
 
 function load(): CartLine[] {
   try {
-    const raw = sessionStorage.getItem(KEY)
+    const raw = localStorage.getItem(KEY)
     return raw ? (JSON.parse(raw) as CartLine[]) : []
   } catch {
     return []
@@ -43,7 +43,7 @@ function load(): CartLine[] {
 function commit(next: CartLine[]): void {
   lines = next
   try {
-    sessionStorage.setItem(KEY, JSON.stringify(next))
+    localStorage.setItem(KEY, JSON.stringify(next))
   } catch {
     /* storage unavailable; the cart still works for this page view */
   }
@@ -91,13 +91,13 @@ export function addToCart(
     {
       lineId,
       menuItemId: item.id,
-      name: item.name.en,
+      name: { en: item.name.en, ar: item.name.ar },
       quantity,
       unitPriceHalalas: item.priceHalalas,
       modifiers: selected.map((s) => ({
         groupKey: s.group,
         optionKey: s.option.key,
-        name: s.option.name.en,
+        name: { en: s.option.name.en, ar: s.option.name.ar },
         priceDeltaHalalas: s.option.priceDeltaHalalas,
       })),
       ...(note ? { note } : {}),

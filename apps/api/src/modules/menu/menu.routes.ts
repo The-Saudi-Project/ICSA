@@ -87,6 +87,22 @@ menuRouter.get(
   },
 )
 
+const searchSchema = z.object({ q: z.string().min(1) })
+
+menuRouter.get(
+  '/items/search',
+  requireRole(Role.OWNER, Role.MANAGER, Role.CASHIER, Role.KITCHEN, Role.WAITER),
+  validate({ query: searchSchema }),
+  async (req: Request & { validatedQuery?: { q: string } }, res: Response) => {
+    if (!req.validatedQuery?.q) {
+      res.status(200).json({ items: [], count: 0 })
+      return
+    }
+    const items = await menuService.searchItems(req.validatedQuery.q)
+    res.status(200).json({ items, count: items.length })
+  },
+)
+
 menuRouter.post(
   '/items',
   requireRestaurantAdmin,

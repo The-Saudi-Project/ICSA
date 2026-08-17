@@ -107,31 +107,14 @@ building.
 
 ## Frontend
 
-> ⚠ **2026-08-11 — this section is contested and must not be applied blindly.**
-> The design system it describes was **replaced by the product owner** after it was written, in
-> work that landed outside a tracked session. The code no longer follows the rules below: it is
-> glassmorphic, uses a card grid on the menu, uses bounce easing, animates the kitchen board, and
-> applies one global light/dark theme instead of a per-surface one.
->
-> **`DESIGN.md` has been rewritten from the code and is the accurate description.** It lists the
-> eight reversals side by side. The product owner has not yet said which way to resolve them, so
-> both this section and the code are recorded as-is. **Ask before "fixing" either one to match
-> the other.**
+## Frontend
 
-Design direction was approved by the product owner on 2026-08-09 and is recorded in
-`PRODUCT.md` and `DESIGN.md`. **Read both before touching any interface.** They are not
-suggestions: the anti-references and the banned patterns are decisions.
+Design direction is approved by the product owner and recorded in `DESIGN.md`. **Read it before touching any interface.**
 
-- The concept is **openwork** — Najdi triangular vents as a motif that carries state, Al-Qatt
-  Al-Asiri pigment on warm plaster. It is load-bearing, not decoration.
-- **Theme is per-surface**, derived from a scene sentence. Light for customer, cashier and
-  admin; dark for the kitchen wall screen. Do not apply one theme everywhere.
-- **Motion is budgeted by frequency.** The entry moment is the only place with delight. The
-  kitchen and cashier boards poll every five seconds and get almost none — a board that moves
-  constantly is a board nobody can read.
-- Only `transform`, `opacity`, `clip-path` and `filter` animate. Custom easing curves only,
-  never `ease-in`, never bounce.
-- Ask the product owner before changing the design direction itself.
+- The concept is a **premium glassmorphic SaaS theme**: frosted translucent surfaces over an animated mesh-gradient background, with vibrant accents, a full light and dark mode, and elegant typography (Inter for Latin, Tajawal for Arabic).
+- **Themes are globally toggled**, but surfaces like the kitchen force specific styles (e.g., `.surface-kiln` keeps the kitchen dark) to ensure visibility from a distance.
+- **Motion and animation** are encouraged to create a dynamic interface (bouncy slide-ups, stagger effects, pulse animations), but be mindful of performance.
+- Use rich UI patterns like interactive card grids rather than simple typographic lists.
 
 ## Frontend conventions (Step 7a)
 

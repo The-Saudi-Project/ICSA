@@ -10,10 +10,12 @@
 import {
   CASHIER_BOARD_STATUSES,
   KITCHEN_BOARD_STATUSES,
+  WAITER_BOARD_STATUSES,
   objectIdSchema,
-  OrderStatus,
   Role,
+  OrderStatus,
   transitionOrderSchema,
+  createOrderSchema,
 } from '@rw/shared'
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
@@ -29,8 +31,8 @@ orderRouter.use(requireAuth, requireStaff)
 const idParamsSchema = z.object({ id: objectIdSchema })
 
 const listQuerySchema = z.object({
-  /** `board=kitchen|cashier` is a shortcut for the status set each screen shows. */
-  board: z.enum(['kitchen', 'cashier']).optional(),
+  /** `board=kitchen|cashier|waiter` is a shortcut for the status set each screen shows. */
+  board: z.enum(['kitchen', 'cashier', 'waiter']).optional(),
   status: z
     .string()
     .max(200)
@@ -60,7 +62,9 @@ orderRouter.get(
         ? KITCHEN_BOARD_STATUSES
         : query.board === 'cashier'
           ? CASHIER_BOARD_STATUSES
-          : undefined)
+          : query.board === 'waiter'
+            ? WAITER_BOARD_STATUSES
+            : undefined)
 
     const orders = await orderService.listOrders({
       statuses,
@@ -115,5 +119,46 @@ orderRouter.post(
   async (req: Request, res: Response) => {
     const order = await orderService.confirmCashPayment(String(req.params.id))
     res.status(200).json({ order })
+  }
+)
+
+orderRouter.post(
+  '/:id/refund',
+  requireRole(Role.CASHIER, Role.MANAGER, Role.OWNER),
+  validate({ params: idParamsSchema }),
+  async (req: Request, res: Response) => {
+    const order = await orderService.refundOrder(String(req.params.id))
+    res.status(200).json({ order })
+  }
+)
+
+orderRouter.post(
+  '/staff-create',
+  requireRole(Role.WAITER, Role.MANAGER, Role.OWNER),
+  validate({
+    body: createOrderSchema.extend({
+      tableId: z.string().optional(),
+    }),
+  }),
+  async (req: Request, res: Response) => {
+    const idempotencyKey = req.headers['x-idempotency-key'] as string
+    const result = await orderService.staffCreateOrder(
+      req.body as any,
+      idempotencyKey,
+    )
+    if (result.replayed) {
+      res.setHeader('X-Idempotent-Replay', 'true')
+    }
+    res.status(result.replayed ? 200 : 201).json({ order: result.order })
   },
+)
+
+orderRouter.patch(
+  '/:id/rush',
+  requireRole(Role.KITCHEN, Role.MANAGER, Role.OWNER),
+  validate({ params: idParamsSchema, body: z.object({ isRush: z.boolean() }) }),
+  async (req: Request, res: Response) => {
+    const order = await orderService.toggleRush(String(req.params.id), req.body.isRush)
+    res.status(200).json({ order })
+  }
 )

@@ -1,9 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
-import { fetchOrderHistory, type StaffOrder } from '../../lib/staffApi.js'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { fetchOrderHistory, getStaffUser, type StaffOrder } from '../../lib/staffApi.js'
+import { useRestaurantSocket } from '../../lib/socket.js'
 import { Price } from '../../components/Price.js'
+import { formatHalalas } from '@rw/shared'
 import { OrderStatus } from '@rw/shared'
 import { Card } from '../../components/ui/Card.js'
+import { staffApi } from '../../lib/staffApi.js'
 
 function OrderModal({ order, onClose }: { order: StaffOrder; onClose: () => void }) {
   return (
@@ -23,9 +26,27 @@ function OrderModal({ order, onClose }: { order: StaffOrder; onClose: () => void
               {new Date(order.placedAt).toLocaleString()}
             </p>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink shrink-0">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
+          <div className="flex items-center gap-3">
+            {order.paymentStatus === 'PAID' && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to refund this order?')) {
+                    staffApi<{ order: StaffOrder }>(`/app/orders/${order.id}/refund`, { method: 'POST' }).then(() => {
+                      onClose()
+                    }).catch(err => {
+                      alert(err.message)
+                    })
+                  }
+                }}
+                className="px-4 py-2 bg-status-danger-wash text-status-danger hover:bg-status-danger hover:text-white transition-colors rounded-xl font-bold text-sm"
+              >
+                Refund
+              </button>
+            )}
+            <button onClick={onClose} className="w-10 h-10 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink shrink-0">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -111,6 +132,53 @@ export default function AdminHistory() {
     })
   })
 
+  const user = getStaffUser()
+  const { socket, isConnected } = useRestaurantSocket(user?.restaurantId)
+
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (!isConnected) return
+
+    const handleUpdate = () => {
+      void queryClient.invalidateQueries({ queryKey: ['orderHistory'] })
+    }
+
+    socket.on('order_created', handleUpdate)
+    socket.on('order_updated', handleUpdate)
+
+    return () => {
+      socket.off('order_created', handleUpdate)
+      socket.off('order_updated', handleUpdate)
+    }
+  }, [socket, isConnected, queryClient])
+
+  const exportCSV = () => {
+    if (!data?.orders || data.orders.length === 0) return
+    const headers = ['Order ID', 'Invoice Number', 'Date', 'Time', 'Table', 'Status', 'Payment Method', 'Payment Status', 'Subtotal', 'VAT', 'Total', 'Customer Note']
+    const rows = data.orders.map(o => [
+      o.publicId,
+      o.invoiceNumber || '',
+      new Date(o.placedAt).toLocaleDateString(),
+      new Date(o.placedAt).toLocaleTimeString(),
+      o.tableLabel || 'Walk-in',
+      o.status,
+      o.paymentMethod,
+      o.paymentStatus,
+      formatHalalas(o.totals.subtotalHalalas).replace('SAR ', ''),
+      formatHalalas(o.totals.vatHalalas).replace('SAR ', ''),
+      formatHalalas(o.totals.grandTotalHalalas).replace('SAR ', ''),
+      `"${o.customerNote?.replace(/"/g, '""') || ''}"`
+    ])
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `orders_${start.toLocaleDateString().replace(/\//g, '-')}.csv`
+    a.click()
+  }
+
   return (
     <div className="min-h-full flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -120,6 +188,14 @@ export default function AdminHistory() {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={exportCSV}
+            disabled={!data?.orders || data.orders.length === 0}
+            className="h-10 px-4 bg-surface-strong border border-border rounded-xl text-small font-bold text-ink hover:bg-surface-hover disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export CSV
+          </button>
           <input
             type="date"
             value={dateStr}

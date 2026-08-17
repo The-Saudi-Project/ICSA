@@ -88,6 +88,9 @@ const menuItemSchema = new Schema(
      */
     stockRemaining: { type: Number, min: 0, default: null },
 
+    averageRating: { type: Number, min: 1, max: 5, default: null },
+    reviewCount: { type: Number, default: 0 },
+
     sortOrder: { type: Number, default: 0 },
     modifierGroups: { type: [modifierGroupSchema], default: [] },
   },

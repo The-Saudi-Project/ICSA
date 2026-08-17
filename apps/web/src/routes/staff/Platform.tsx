@@ -125,7 +125,7 @@ export default function Platform() {
                   Failed to load platform stats.
                 </Card>
               ) : (
-                <div className="grid gap-6 sm:grid-cols-3 stagger">
+                <div className="grid gap-6 sm:grid-cols-4 stagger">
                   <Card variant="glass" className="p-6">
                     <span className="text-small font-bold text-ink-soft uppercase tracking-wider flex items-center gap-2">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
@@ -137,9 +137,17 @@ export default function Platform() {
                     <div className="absolute inset-0 bg-gradient-to-br from-gold-wash to-transparent pointer-events-none"></div>
                     <span className="text-small font-bold text-ink-soft uppercase tracking-wider flex items-center gap-2 relative z-10">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                      Today's Orders
+                      Total Orders
                     </span>
-                    <span className="text-display text-gold font-black mt-2 block relative z-10">{stats.data.todayPlatformOrders}</span>
+                    <span className="text-display text-gold font-black mt-2 block relative z-10">{stats.data.totalOrders}</span>
+                  </Card>
+                  <Card variant="glass" className="p-6 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-status-success-wash to-transparent pointer-events-none"></div>
+                    <span className="text-small font-bold text-ink-soft uppercase tracking-wider flex items-center gap-2 relative z-10">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                      Total Revenue
+                    </span>
+                    <span className="text-display text-status-success font-black mt-2 block relative z-10">SAR {stats.data.totalRevenue.toFixed(2)}</span>
                   </Card>
                   <Card variant="glass" className="p-6">
                     <span className="text-small font-bold text-ink-soft uppercase tracking-wider flex items-center gap-2">

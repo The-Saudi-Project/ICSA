@@ -308,9 +308,10 @@ export interface PublicMenuCategory {
     priceHalalas: number
     imageUrl?: string | null
     prepTimeMinutes?: number | null
-    /** Restaurant-supplied. The UI must label it as the restaurant's own claim. */
     calories?: number | null
     allergens: string[]
+    averageRating?: number | null
+    reviewCount?: number
     /**
      * Whether the dish can be ordered right now — because staff marked it sold
      * out, or because the portion count reached zero.
@@ -382,6 +383,8 @@ export async function getPublicMenu(): Promise<PublicMenu> {
           prepTimeMinutes: i.prepTimeMinutes,
           calories: i.calories,
           allergens: i.allergens,
+          averageRating: i.averageRating,
+          reviewCount: i.reviewCount,
           isSoldOut: !i.isAvailable || i.stockRemaining === 0,
           // Unavailable options are hidden, so a customer cannot pick one.
           modifierGroups: i.modifierGroups.map((g) => ({
@@ -402,4 +405,22 @@ export async function getPublicMenu(): Promise<PublicMenu> {
       })),
     version: `${items.length}-${categories.length}-${newestChange}`,
   }
+}
+
+export async function searchItems(query: string): Promise<MenuItemView[]> {
+  const repo = tenantRepo(MenuItemModel)
+  // Very simple regex search on name and description
+  const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(safeQuery, 'i')
+
+  const items = await repo.find({
+    $or: [
+      { 'name.en': { $regex: regex } },
+      { 'name.ar': { $regex: regex } },
+      { 'description.en': { $regex: regex } },
+      { 'description.ar': { $regex: regex } }
+    ]
+  }, { limit: 50 })
+
+  return items.map(toItemView)
 }

@@ -51,11 +51,45 @@ export async function getRestaurantStats() {
     }
   }
 
+  // 7-day trend
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  sevenDaysAgo.setHours(0, 0, 0, 0)
+  
+  const allWeekOrders = await tenantRepo(OrderModel).find({ placedAt: trusted({ $gte: sevenDaysAgo }) })
+  
+  const trendMap = new Map<string, { revenue: number; orders: number }>()
+  for (let i = 0; i < 7; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    trendMap.set(key, { revenue: 0, orders: 0 })
+  }
+
+  for (const order of allWeekOrders) {
+    const dateKey = order.placedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    if (trendMap.has(dateKey)) {
+      const existing = trendMap.get(dateKey)!
+      existing.orders++
+      if (order.status === OrderStatus.COMPLETED) {
+        existing.revenue += order.totals?.grandTotalHalalas ?? 0
+      }
+    }
+  }
+
+  // Convert map to array and reverse to chronological order
+  const trend = Array.from(trendMap.entries()).map(([date, data]) => ({
+    date,
+    revenue: data.revenue / 100, // format to SAR for charting
+    orders: data.orders
+  })).reverse()
+
   return {
     todayRevenueHalalas,
     todayOrdersCount,
     activeOrders,
     staffCount,
+    trend,
   }
 }
 

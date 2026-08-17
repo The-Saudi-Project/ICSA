@@ -16,6 +16,10 @@ import { perTableRateLimit, tableSessionRateLimit } from '../../middleware/rateL
 import { validate } from '../../middleware/validate.js'
 import * as menuService from '../menu/menu.service.js'
 import * as tableService from '../tables/table.service.js'
+import * as reviewService from '../menu/review.service.js'
+import { RestaurantModel } from '../restaurants/restaurant.model.js'
+import { requireTenantId } from '../../core/tenant.js'
+import { z } from 'zod'
 
 export const publicRouter: Router = Router()
 
@@ -89,6 +93,25 @@ publicRouter.get('/menu', requireTableSession, async (req: Request, res: Respons
   res.status(200).json(menu)
 })
 
+publicRouter.get('/menu/:id/reviews', requireTableSession, async (req: Request, res: Response) => {
+  const reviews = await reviewService.getReviews(String(req.params.id))
+  res.setHeader('Cache-Control', 'no-store')
+  res.status(200).json({ reviews })
+})
+
+const reviewSchema = z.object({
+  menuItemId: z.string(),
+  orderPublicId: z.string(),
+  rating: z.number().min(1).max(5),
+  comment: z.string().max(1000).optional(),
+  customerName: z.string().min(1).max(100),
+})
+
+publicRouter.post('/reviews', requireTableSession, validate({ body: reviewSchema }), async (req: Request, res: Response) => {
+  const review = await reviewService.createReview(req.body as z.infer<typeof reviewSchema>)
+  res.status(201).json({ review })
+})
+
 /**
  * Place an order.
  *
@@ -121,9 +144,13 @@ publicRouter.post(
 )
 
 /** Only orders belonging to the session presenting the request. */
-publicRouter.get('/orders', requireTableSession, async (_req: Request, res: Response) => {
+publicRouter.get('/orders', requireTableSession, async (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store')
-  res.status(200).json({ orders: await orderService.listOrdersForSession() })
+  
+  const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+  
+  res.status(200).json({ orders: await orderService.listOrdersForSession({ limit, cursor }) })
 })
 
 publicRouter.get('/orders/:publicId', requireTableSession, async (req: Request, res: Response) => {
@@ -150,4 +177,12 @@ publicRouter.get('/session', requireTableSession, (_req: Request, res: Response)
   res.status(200).json({
     session: { tableId: context?.tableId, restaurantId: context?.restaurantId },
   })
+})
+
+/** Fetch the restaurant's live status such as wait time. */
+publicRouter.get('/restaurant/status', requireTableSession, async (_req: Request, res: Response) => {
+  const restaurantId = requireTenantId()
+  const restaurant = await RestaurantModel.findById(restaurantId).select('settings')
+  res.setHeader('Cache-Control', 'no-store')
+  res.status(200).json({ estimatedWaitMinutes: restaurant?.settings?.estimatedWaitMinutes ?? 15 })
 })

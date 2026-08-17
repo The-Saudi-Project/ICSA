@@ -45,6 +45,7 @@ const orderItemSchema = new Schema(
 
     quantity: { type: Number, required: true, min: 1 },
     modifiers: { type: [orderModifierSchema], default: [] },
+    prepTimeMinutes: { type: Number },
 
     /** (unitPrice + modifier deltas) x quantity, excluding VAT. */
     lineSubtotalHalalas: { type: Number, required: true, min: 0 },
@@ -111,6 +112,8 @@ const orderSchema = new Schema(
 
     customerNote: { type: String, trim: true },
     customerPhone: { type: String, trim: true },
+
+    isRush: { type: Boolean, default: false },
 
     /** Unique per restaurant. Stops a retried request creating a second order. */
     idempotencyKey: { type: String },
