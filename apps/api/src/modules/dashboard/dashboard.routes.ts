@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import { requireAuth } from '../../middleware/auth.js'
 import { requirePlatformAdmin, requireRestaurantAdmin } from '../../middleware/rbac.js'
+import { ZipArchive } from 'archiver'
 import * as dashboardService from './dashboard.service.js'
 
 export const appDashboardRouter: Router = Router()
@@ -19,13 +20,13 @@ appDashboardRouter.get('/stats', async (_req: Request, res: Response, next) => {
 
 appDashboardRouter.get('/backup', async (_req: Request, res: Response, next) => {
   try {
-    const archiver = (await import('archiver')).default
+
     const data = await dashboardService.getRestaurantBackupData()
     
     res.setHeader('Content-Type', 'application/zip')
     res.setHeader('Content-Disposition', 'attachment; filename="restaurant_backup.zip"')
     
-    const archive = archiver('zip', { zlib: { level: 9 } })
+    const archive = new ZipArchive({ zlib: { level: 9 } })
     archive.pipe(res)
     
     archive.append(JSON.stringify(data.orders, null, 2), { name: 'orders.json' })

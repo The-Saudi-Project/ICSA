@@ -18,6 +18,8 @@ import { OrderStatus } from '@rw/shared'
 import { startOfBusinessDay } from '../orders/counter.model.js'
 import { UserModel } from '../users/user.model.js'
 import { RestaurantModel } from '../restaurants/restaurant.model.js'
+import { MenuCategoryModel } from '../menu/menuCategory.model.js'
+import { MenuItemModel } from '../menu/menuItem.model.js'
 
 /**
  * `trusted()` is mandatory: `sanitizeFilter` is on globally, so a bare
@@ -104,5 +106,21 @@ export async function getPlatformStats() {
     totalRestaurants: restaurantsCount,
     totalUsers: staffCount,
     todayPlatformOrders: todayOrdersCount,
+  }
+}
+
+export async function getRestaurantBackupData() {
+  const [orders, categories, menuItems, staff] = await Promise.all([
+    tenantRepo(OrderModel).find({}),
+    tenantRepo(MenuCategoryModel).find({}),
+    tenantRepo(MenuItemModel).find({}),
+    tenantRepo(UserModel).find({}),
+  ])
+
+  return {
+    orders,
+    categories,
+    menuItems,
+    staff,
   }
 }
