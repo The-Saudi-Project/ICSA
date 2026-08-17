@@ -34,6 +34,7 @@ import { orderRouter } from './modules/orders/order.routes.js'
 import { staffRouter } from './modules/staff/staff.routes.js'
 import { platformRouter } from './modules/platform/platform.routes.js'
 import { publicRouter } from './modules/public/public.routes.js'
+import { restaurantRouter } from './modules/restaurants/restaurant.routes.js'
 import { tableRouter } from './modules/tables/table.routes.js'
 import { appDashboardRouter, platformDashboardRouter } from './modules/dashboard/dashboard.routes.js'
 
@@ -110,6 +111,8 @@ export function createApp(): Express {
   v1.use('/auth', authRouter)
   v1.use('/public', publicRouter) // customers: table session only, no login
   v1.use('/app/dashboard', appDashboardRouter) // restaurant dashboard
+  // Singular and id-less: the tenant comes from the token, never the path.
+  v1.use('/app/restaurant', restaurantRouter)
   v1.use('/app/tables', tableRouter) // restaurant staff
   v1.use('/app/menu', menuRouter)
   v1.use('/app/orders', orderRouter)

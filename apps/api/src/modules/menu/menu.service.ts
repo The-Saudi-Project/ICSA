@@ -12,29 +12,10 @@ import { writeAudit } from '../../core/audit.js'
 import { badRequest, conflict, notFound } from '../../core/errors.js'
 import { tenantRepo } from '../../core/tenant.js'
 import { AuditAction } from '../audit/auditLog.model.js'
-import { imageProvider } from '../images/index.js'
+// Shared with the restaurant logo, so "is this URL ours" has one definition.
+import { assertOwnedImageUrl } from '../images/index.js'
 import { MenuCategoryModel, type MenuCategoryDoc } from './menuCategory.model.js'
 import { MenuItemModel, type MenuItemDoc } from './menuItem.model.js'
-
-/* ── image URL validation ─────────────────────────────────────────────────── */
-
-/**
- * An image URL may only be stored if it genuinely belongs to our image provider
- * and to this tenant.
- *
- * Without this an admin could set an item's image to any URL, and our
- * customer-facing page would then load content from a host we do not control —
- * a tracking pixel at best, and an attacker-controlled response at worst.
- */
-function assertOwnedImageUrl(url: string | undefined, restaurantId: string): void {
-  if (url === undefined || url === '') return
-
-  if (!imageProvider().isOwnedUrl(url, restaurantId)) {
-    throw badRequest(
-      'Image URLs must come from this restaurant’s own uploads. Upload the image first, then use the URL it returns.',
-    )
-  }
-}
 
 /* ── categories ───────────────────────────────────────────────────────────── */
 

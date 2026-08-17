@@ -11,6 +11,7 @@ import {
   objectIdSchema,
   RestaurantStatus,
   slugSchema,
+  updateRestaurantFinanceSchema,
   updateRestaurantStatusSchema,
   TENANT_ROLES,
   UserStatus,
@@ -20,6 +21,7 @@ import { z } from 'zod'
 import { requireAuth } from '../../middleware/auth.js'
 import { requirePlatformAdmin } from '../../middleware/rbac.js'
 import { validate } from '../../middleware/validate.js'
+import * as restaurantService from '../restaurants/restaurant.service.js'
 import * as platformService from './platform.service.js'
 
 export const platformRouter: Router = Router()
@@ -182,6 +184,38 @@ platformRouter.patch(
         crNumber: restaurant.crNumber,
         settings: restaurant.settings,
         createdAt: restaurant.createdAt,
+      },
+    })
+  },
+)
+
+/**
+ * The money settings — VAT rate, VAT-inclusive pricing, and which order types a
+ * tenant has.
+ *
+ * This route is the *reason* a restaurant cannot set its own VAT rate rather
+ * than an afterthought: before it existed, nothing anywhere could change the
+ * rate, so every tenant was permanently on the 15% schema default and a
+ * genuinely zero-rated business had no route at all. "Platform admin only" has
+ * to mean somebody can, or it just means broken.
+ *
+ * Kept separate from `PATCH /restaurants/:id`, which handles identity and
+ * profile. Mixing a slug rename and a VAT change into one endpoint makes the
+ * audit trail harder to read and the blast radius of a mistake larger.
+ */
+platformRouter.patch(
+  '/restaurants/:id/finance',
+  validate({ params: idParamsSchema, body: updateRestaurantFinanceSchema }),
+  async (req: Request, res: Response) => {
+    const restaurant = await restaurantService.updateRestaurantFinance(
+      String(req.params.id),
+      req.body,
+    )
+    res.status(200).json({
+      restaurant: {
+        id: restaurant._id.toString(),
+        slug: restaurant.slug,
+        settings: restaurant.settings,
       },
     })
   },

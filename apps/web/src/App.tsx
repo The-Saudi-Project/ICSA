@@ -20,6 +20,7 @@ const Cashier = lazy(() => import('./routes/staff/Cashier.js'))
 const AdminMenu = lazy(() => import('./routes/staff/AdminMenu.js'))
 const AdminTables = lazy(() => import('./routes/staff/AdminTables.js'))
 const AdminStaff = lazy(() => import('./routes/staff/AdminStaff.js'))
+const AdminSettings = lazy(() => import('./routes/staff/AdminSettings.js'))
 const Platform = lazy(() => import('./routes/staff/Platform.js'))
 const PlatformTenantDetail = lazy(() => import('./routes/staff/PlatformTenantDetail.js'))
 const StaffLayout = lazy(() => import('./routes/staff/StaffLayout.js'))
@@ -61,6 +62,7 @@ export default function App() {
                 <Route path="menu" element={<Suspense fallback={<Fallback />}><AdminMenu /></Suspense>} />
                 <Route path="tables" element={<Suspense fallback={<Fallback />}><AdminTables /></Suspense>} />
                 <Route path="staff" element={<Suspense fallback={<Fallback />}><AdminStaff /></Suspense>} />
+                <Route path="settings" element={<Suspense fallback={<Fallback />}><AdminSettings /></Suspense>} />
               </Route>
               <Route path="/platform">
                 <Route index element={<Suspense fallback={<Fallback />}><Platform /></Suspense>} />

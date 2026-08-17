@@ -7,6 +7,7 @@
  */
 
 import { env } from '../../config/env.js'
+import { badRequest } from '../../core/errors.js'
 import { CloudinaryProvider } from './cloudinaryProvider.js'
 import { NullImageProvider } from './nullImageProvider.js'
 import type { ImageProvider } from './imageProvider.js'
@@ -21,6 +22,28 @@ export function imageProvider(): ImageProvider {
 /** Test seam. Never called by application code. */
 export function __setImageProviderForTests(next: ImageProvider | undefined): void {
   provider = next
+}
+
+/**
+ * An image URL may only be stored if it genuinely belongs to our image provider
+ * and to this tenant.
+ *
+ * Without this an admin could point any stored image — a menu photo, the
+ * restaurant's logo — at an arbitrary URL, and our customer-facing page would
+ * then load content from a host we do not control: a tracking pixel at best, an
+ * attacker-controlled response at worst.
+ *
+ * Lives here rather than in one module because there is now more than one caller
+ * (menu items and the restaurant logo), and two copies of a rule like this drift.
+ */
+export function assertOwnedImageUrl(url: string | undefined, restaurantId: string): void {
+  if (url === undefined || url === '') return
+
+  if (!imageProvider().isOwnedUrl(url, restaurantId)) {
+    throw badRequest(
+      'Image URLs must come from this restaurant’s own uploads. Upload the image first, then use the URL it returns.',
+    )
+  }
 }
 
 export type { ImageProvider, UploadCredentials } from './imageProvider.js'

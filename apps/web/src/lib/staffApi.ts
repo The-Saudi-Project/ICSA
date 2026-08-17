@@ -472,6 +472,67 @@ export async function uploadImageToProvider(
   return body.secure_url
 }
 
+/* ── the restaurant's own record ──────────────────────────────────────────── */
+
+/**
+ * Note there is no id anywhere in these two calls.
+ *
+ * The server reads the tenant from the access token, so "my restaurant" is the
+ * only restaurant these can reach. If you ever find yourself adding an id
+ * parameter here, something has gone wrong upstream.
+ */
+export interface RestaurantSettings {
+  currency: string
+  vatRatePercent: number
+  pricesIncludeVat: boolean
+  serviceChargePercent: number
+  kitchenStartsBeforePayment: boolean
+  tableSessionTtlMinutes: number
+  defaultLocale: string
+  orderTypes: string[]
+}
+
+export interface OwnRestaurant {
+  id: string
+  publicId: string
+  name: LocalizedText
+  slug: string
+  type: string
+  status: string
+  addressLine?: string | null
+  city?: string | null
+  phone?: string | null
+  logoUrl?: string | null
+  vatNumber?: string | null
+  crNumber?: string | null
+  settings: RestaurantSettings
+  /** Which fields the server will accept. Rendering only — it enforces, not us. */
+  editable: { settings: string[]; finance: string[] }
+}
+
+export interface RestaurantSettingsInput {
+  name?: LocalizedText
+  addressLine?: string
+  city?: string
+  phone?: string
+  logoUrl?: string
+  vatNumber?: string
+  crNumber?: string
+  serviceChargePercent?: number
+  kitchenStartsBeforePayment?: boolean
+  tableSessionTtlMinutes?: number
+  defaultLocale?: 'en' | 'ar'
+}
+
+export const fetchOwnRestaurant = () =>
+  staffApi<{ restaurant: OwnRestaurant }>('/app/restaurant')
+
+export const updateOwnRestaurant = (body: RestaurantSettingsInput) =>
+  staffApi<{ restaurant: OwnRestaurant }>('/app/restaurant', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+
 /* ── tables ───────────────────────────────────────────────────────────────── */
 
 export interface AdminTable {

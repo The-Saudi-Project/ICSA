@@ -57,6 +57,10 @@ const ADMIN_ROUTES: readonly [Method, string][] = [
   ['patch', `/api/v1/app/staff/${SOME_ID}`],
   ['post', `/api/v1/app/staff/${SOME_ID}/reset-password`],
   ['get', '/api/v1/app/dashboard/stats'],
+  // Added with the settings API, 2026-08-15. A route that can change a service
+  // charge belongs behind the same guard as one that can change a menu price.
+  ['get', '/api/v1/app/restaurant'],
+  ['patch', '/api/v1/app/restaurant'],
 ]
 
 const call = (session: Session, method: Method, path: string) =>

@@ -28,7 +28,7 @@ runs stays the financial system of record. We integrate with it.
 
 ```
 Current Phase:   Phase 1 — Core restaurant + customer ordering MVP
-Current Feature: Step 9c — security / a11y / performance / UX audit (2026-08-15)
+Current Feature: Step 10 — restaurant settings API + owner settings screen
 Status:          Phase 1 complete. A full adversarial audit landed on 2026-08-15:
                  21 findings, all fixed — see §16. The isolation, table-token,
                  pricing, order-state and audit cores were traced end to end and
@@ -707,6 +707,18 @@ GET  /api/v1/public/orders/:publicId        this session's order only
 POST /api/v1/public/orders/:publicId/cancel inside ORDER_CANCEL_WINDOW_SECONDS
 GET  /api/v1/public/session                 session token → { tableId, restaurantId }
 
+# restaurant staff — the restaurant's own record (OWNER | MANAGER)
+# Singular and id-less on purpose: the tenant comes from the token, so there is
+# no parameter to tamper with. Added 2026-08-15.
+GET   /api/v1/app/restaurant          → { restaurant, settings, editable }
+PATCH /api/v1/app/restaurant          { name?, addressLine?, city?, phone?, logoUrl?,
+                                        vatNumber?, crNumber?, serviceChargePercent?,
+                                        kitchenStartsBeforePayment?,
+                                        tableSessionTtlMinutes?, defaultLocale? }
+                                       vatRatePercent / pricesIncludeVat / currency /
+                                       orderTypes / slug / status are STRIPPED here —
+                                       they are platform-only. See the finance route.
+
 # restaurant staff — tables (OWNER | MANAGER only)
 GET    /api/v1/app/tables
 POST   /api/v1/app/tables                { label, zone?, seats? }
@@ -749,6 +761,11 @@ POST   /api/v1/platform/restaurants        → 201 { restaurant, owner, temporar
 GET    /api/v1/platform/restaurants        ?status=&limit=&skip=
 GET    /api/v1/platform/restaurants/:id
 PATCH  /api/v1/platform/restaurants/:id            { name?, slug?, city?, vatNumber?, crNumber? }
+PATCH  /api/v1/platform/restaurants/:id/finance   { vatRatePercent?, pricesIncludeVat?,
+                                                   orderTypes? }
+                                                 The ONLY route that can set a VAT rate.
+                                                 Writes RESTAURANT_VAT_CHANGED with
+                                                 before/after values.
 PATCH  /api/v1/platform/restaurants/:id/status     { status, reason? }
 POST   /api/v1/platform/restaurants/:id/reset-password  → 200 { temporaryPassword }
 GET    /api/v1/platform/restaurants/:id/staff
@@ -833,6 +850,9 @@ These are deliberate. **Do not reverse them without explicit product-owner appro
 | Integers in halalas for money | floats produce wrong receipts |
 | Hosted/redirect payment pages | keeps us at PCI SAQ-A instead of an audit programme |
 | Adapter interfaces for accounting/POS | core code never imports a vendor SDK; adding a provider touches one file |
+| **A restaurant cannot set its own VAT rate** (product owner, 2026-08-15) | In KSA the standard rate is set by ZATCA — it is law, not a business preference. A wrong value under-collects tax on every order and corrupts every invoice, and it would propagate straight into the Phase 3 accounting sync. Genuinely zero-rated dishes are already served by the per-item `vatRatePercent` override on the menu item. `pricesIncludeVat` is platform-only for the same reason: KSA consumer prices are displayed VAT-inclusive, and it is a silent boolean that moves every bill by the whole VAT rate. Both are set through `PATCH /platform/restaurants/:id/finance`, which exists **because** "platform-only" has to mean somebody can |
+| **Service charge capped at 15%** (product owner, 2026-08-15) | The column allows 0–100, which is a storage bound rather than a policy: a mistyped `100` would silently double every customer's bill. Enforced in the shared schema, not only in the form, because the UI is not a security boundary |
+| **The settings route is singular and id-less** — `/app/restaurant`, not `/app/restaurants/:id` | The tenant comes from the verified token. A path with an id invites exactly the mistake four layers of tenant isolation exist to prevent, and it would be one careless handler away from being honoured |
 | One React app with role-aware routing | one build, one deploy, shared components |
 | argon2 for passwords, `jose` for JWT | current best practice |
 | Table tokens: SHA-256 hash for lookup **+** AES-256-GCM encrypted copy | *(decided 2026-08-09)* a DB dump yields no working URLs, yet the owner can still reprint a QR without rewriting the physical tag. Reuses the same crypto helper needed for payment and accounting credentials in Phases 2–3 |
@@ -940,7 +960,6 @@ all run and are green.
 | Risk | Severity | Mitigation |
 |---|---|---|
 | **`TRUST_PROXY_HOPS` still needs one confirming look at the logs** | Low | Defaults to the previous hard-coded `1`; production probably needs **2**, because `vercel.json` rewrites `/api` onward to Render. **The server now diagnoses this itself** — the first production request logs `proxy depth looks like N, but TRUST_PROXY_HOPS is M` when they disagree. **Action: read that one log line after the next deploy and set the variable if it disagrees.** Until then, IP rate limiting may be keyed on a proxy address rather than the customer, which collapses every limit into one shared bucket |
-| **A restaurant cannot configure itself** | Medium | No `/app/restaurant` router exists, so VAT rate, service charge, `kitchenStartsBeforePayment`, logo and address are fixed at their creation-time defaults forever. Not a bug — a missing feature that decides pricing behaviour, so it is the product owner's call. See §22 |
 | Rate limiting is per-process, in memory | Medium | Correct on one instance, wrong the moment there are two — each would count separately. Redis is the Phase 2 answer; until then do not scale the API horizontally |
 | The audit environment could not run the DB-backed suites | Medium | `fastdl.mongodb.org` is blocked by egress policy, so `mongodb-memory-server` cannot fetch `mongod`. The 202 security tests and 68 other DB tests were **not** executed on 2026-08-15. GitHub CI runs them on every push and remains the gate — check it is green before merging that work |
 | Tenant isolation regression as code grows | **Critical** | 4 defence layers + CI-blocking security suite |
@@ -1150,7 +1169,7 @@ are listed so nobody mistakes a stub for a bug, or ships assuming they work.
 
 | Gap | Impact | Why it is not being built here |
 |---|---|---|
-| **A restaurant cannot change its own settings** | `settings.vatRatePercent`, `serviceChargePercent`, `kitchenStartsBeforePayment`, `tableSessionTtlMinutes`, `logoUrl`, `addressLine`, `defaultLocale` and `orderTypes` are **read** by pricing and ordering but are only ever written as schema defaults at tenant creation. There is no `/app/restaurant` router at all. So every restaurant runs on 15% VAT, no service charge, and cash-confirmed-before-kitchen, with no way to change any of it | This is new scope that decides **pricing and VAT behaviour**, which `CLAUDE.md` explicitly reserves for the product owner. It also needs its own audit actions (a VAT-rate change is money-relevant) and a decision about which of these an owner may set versus which the platform sets on their behalf. **Needs a product decision before it is built** |
+| ~~A restaurant cannot change its own settings~~ | ✅ **built 2026-08-15** — `/app/restaurant` (owner) and `/platform/restaurants/:id/finance` (platform). The owner/platform split was a product-owner decision, recorded in §14 | — |
 | **Kitchen staff cannot edit stock** | Recorded separately in §16 as an open product decision from 2026-08-12 | Same reason — the requested behaviour and the built location disagree |
 
 ---
@@ -1182,6 +1201,47 @@ AI recommendations · demand forecasting · ERP integrations · enterprise SSO �
 ---
 
 ## 24. Last Session Summary
+
+```
+Date:      2026-08-15
+Session:   Step 9c — security/a11y/performance audit, then the settings API
+```
+
+**Step 10 — restaurant settings API (built after the audit, on an explicit decision).**
+The audit surfaced that a restaurant could not change anything about itself: VAT rate, service
+charge, payment policy, logo and address were read by pricing and ordering but only ever written
+as schema defaults at creation, and no `/app/restaurant` router existed. Because that decides
+pricing behaviour, it was put to the product owner rather than built on assumption. The answers
+became the design:
+
+- **VAT is platform-only.** In KSA the rate is ZATCA's, not a restaurant's. `pricesIncludeVat`
+  went the same way for the same reason — it is a silent boolean that moves every bill by the
+  whole VAT rate. `PATCH /platform/restaurants/:id/finance` is new and is the *only* route that
+  can set a rate; without it "platform-only" would have meant nobody, ever, since nothing in the
+  codebase could previously change it at all.
+- **Service charge is the owner's, capped at 15%.** The column allows 100, which would double a
+  bill on one keystroke. The cap lives in the shared schema, not the form.
+- **Two schemas, never one with a flag.** `updateRestaurantSettingsSchema` (owner) and
+  `updateRestaurantFinanceSchema` (platform) cannot be confused at a call site, and Zod strips
+  anything not in the one being used — so an owner posting `vatRatePercent` gets a 200 and no
+  change, not a 403 arms race.
+- **The route is `/app/restaurant`** — singular, no id. The tenant comes from the token, so there
+  is nothing to tamper with.
+
+Four new audit actions, of which three are deliberate: `RESTAURANT_VAT_CHANGED` and
+`RESTAURANT_SERVICE_CHARGE_CHANGED` carry before/after values because they are money, and
+`RESTAURANT_PAYMENT_POLICY_CHANGED` records who decided the kitchen may cook before the cash is
+confirmed. The owner-facing screen at `/admin/settings` shows the VAT rate read-only with the
+reason, and frames the payment policy as two named outcomes rather than a switch.
+
+**29 new schema tests run everywhere** (they need no database) and cover the split, the caps,
+and operator-shaped payloads. A 21-test API suite covers isolation, RBAC and the audit trail, and
+`admin-surface.test.ts` gained the two new routes — those need Mongo, so **CI is where they first
+execute.**
+
+---
+
+### Previous work this session
 
 ```
 Date:      2026-08-15

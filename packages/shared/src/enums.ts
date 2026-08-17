@@ -62,3 +62,25 @@ export const CURRENCY = 'SAR' as const
 
 /** Default KSA VAT rate. Per-restaurant configurable — never assume this at a call site. */
 export const DEFAULT_VAT_RATE_PERCENT = 15
+
+/**
+ * Ceiling on a restaurant's service charge, in percent.
+ *
+ * The database column allows 0–100, which is a storage bound rather than a
+ * policy: a mistyped `100` would silently double every customer's bill. No
+ * hospitality service charge is anywhere near this, so the API refuses higher.
+ *
+ * Lives here, beside the other money constants, rather than in
+ * `schemas/restaurant.ts` — that file imports Zod, and the customer bundle must
+ * never pull Zod in to read a number.
+ */
+export const MAX_SERVICE_CHARGE_PERCENT = 15
+
+/**
+ * Ceiling on a table session, in minutes.
+ *
+ * The column allows 1440 — a full day — which was never the intent; the default
+ * is 180. A session is also how long a *photographed* QR code keeps working, so
+ * the practical bound is one long service, not one day.
+ */
+export const MAX_TABLE_SESSION_TTL_MINUTES = 480

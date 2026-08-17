@@ -47,6 +47,24 @@ export const AuditAction = {
   STAFF_PASSWORD_RESET: 'STAFF_PASSWORD_RESET',
   RESTAURANT_CREATED: 'RESTAURANT_CREATED',
   RESTAURANT_UPDATED: 'RESTAURANT_UPDATED',
+  /** A restaurant changed its own profile or operating settings. */
+  RESTAURANT_SETTINGS_UPDATED: 'RESTAURANT_SETTINGS_UPDATED',
+  /**
+   * Money-relevant, so it is recorded separately with before and after values
+   * rather than being lost inside a generic settings update — the same rule that
+   * gives `MENU_PRICE_CHANGED` its own action.
+   *
+   * Platform-only: a restaurant cannot set its own VAT rate.
+   */
+  RESTAURANT_VAT_CHANGED: 'RESTAURANT_VAT_CHANGED',
+  /** Money-relevant: it applies to the whole of every future bill. */
+  RESTAURANT_SERVICE_CHARGE_CHANGED: 'RESTAURANT_SERVICE_CHARGE_CHANGED',
+  /**
+   * Whether the kitchen starts cooking before a cashier confirms the cash.
+   * Not strictly money, but it decides whether food is made on trust, so it is
+   * worth being able to answer "who turned that on, and when".
+   */
+  RESTAURANT_PAYMENT_POLICY_CHANGED: 'RESTAURANT_PAYMENT_POLICY_CHANGED',
   RESTAURANT_SUSPENDED: 'RESTAURANT_SUSPENDED',
   RESTAURANT_REACTIVATED: 'RESTAURANT_REACTIVATED',
   /**

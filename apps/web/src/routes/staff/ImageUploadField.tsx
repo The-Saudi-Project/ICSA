@@ -25,10 +25,18 @@ const MB = 1024 * 1024
 export function ImageUploadField({
   value,
   onChange,
+  kind = 'menu-item',
+  label = 'Photo',
 }: {
   /** The currently stored image URL, or empty. */
   value: string
   onChange: (url: string) => void
+  /**
+   * Which tenant folder the signature is scoped to. The server signs this — the
+   * browser cannot change the destination without invalidating the signature.
+   */
+  kind?: 'menu-item' | 'menu-category' | 'restaurant-logo'
+  label?: string
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +53,7 @@ export function ImageUploadField({
     setPreview(objectUrl)
 
     try {
-      const credentials = await requestUploadCredentials('menu-item')
+      const credentials = await requestUploadCredentials(kind)
 
       // Checked here as well as at the host, so an owner on a slow connection
       // is told immediately rather than after uploading eight megabytes.
@@ -79,7 +87,7 @@ export function ImageUploadField({
   return (
     <div className="space-y-3">
       <span className="block text-meta font-semibold uppercase tracking-[0.12em] text-ink-soft">
-        Photo
+        {label}
       </span>
 
       <div className="flex items-start gap-4">
