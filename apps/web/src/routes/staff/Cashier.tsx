@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Price } from '../../components/Price.js'
 import { minutesSince } from '../../lib/format.js'
-import { confirmCash, fetchBoard, getStaffUser, staffApi, type StaffOrder } from '../../lib/staffApi.js'
+import { confirmCash, fetchBoard, fetchOrderHistory, getStaffUser, staffApi, type StaffOrder } from '../../lib/staffApi.js'
 import { Link } from 'react-router'
 import { Card } from '../../components/ui/Card.js'
 import { ReceiptPrint } from '../../components/ReceiptPrint.js'
@@ -11,8 +11,85 @@ import { SoundToggle } from '../../components/SoundToggle.js'
 import { useRestaurantSocket } from '../../lib/socket.js'
 import { playAlertBeep } from '../../lib/audio.js'
 
+function OrderHistoryModal({ onClose, onPrint }: { onClose: () => void, onPrint: (order: StaffOrder) => void }) {
+  const [dateStr, setDateStr] = useState<string>(() => new Date().toISOString().slice(0, 10))
+  
+  const start = new Date(dateStr)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(dateStr)
+  end.setHours(23, 59, 59, 999)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['orderHistory', 'cashier', dateStr],
+    queryFn: () => fetchOrderHistory({ from: start, to: end }),
+  })
+
+  return (
+    <div className="fixed inset-0 z-[60] flex justify-end md:items-center md:justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+      
+      <div className="relative z-10 w-full md:max-w-3xl h-full md:h-auto md:max-h-[85vh] bg-surface md:rounded-[32px] shadow-2xl flex flex-col animate-slide-up border-l md:border border-border">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between shrink-0 bg-surface md:rounded-t-[32px]">
+          <div>
+            <h2 className="text-h3 font-bold text-ink">Paid Receipts / History</h2>
+          </div>
+          <div className="flex items-center gap-4">
+            <input
+              type="date"
+              value={dateStr}
+              onChange={(e) => setDateStr(e.target.value)}
+              className="h-10 px-3 bg-ground border border-border rounded-xl text-body text-ink outline-none focus:border-accent"
+            />
+            <button onClick={onClose} className="w-10 h-10 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink shrink-0">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+          {isLoading ? (
+            <div className="py-12 flex justify-center">
+              <div className="animate-spin text-ink-faint">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v4"/></svg>
+              </div>
+            </div>
+          ) : data?.orders.length === 0 ? (
+            <div className="py-12 text-center text-ink-soft">
+              <p>No orders found for this date.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {data?.orders.map(order => (
+                <div key={order.id} className="bg-surface-strong border border-border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="text-body font-bold text-ink">{order.invoiceNumber ?? order.publicId}</p>
+                    <p className="text-small text-ink-soft mt-1">
+                      {new Date(order.placedAt).toLocaleTimeString()} &bull; {order.tableLabel ?? 'Walk-in'} &bull; {order.status}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <Price halalas={order.totals.grandTotalHalalas} className="font-bold text-ink" />
+                    <button
+                      onClick={() => onPrint(order)}
+                      className="px-4 py-2 bg-surface border border-border hover:bg-surface-hover transition-colors rounded-xl font-bold text-sm text-ink flex items-center gap-2"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                      Print
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Cashier() {
   const queryClient = useQueryClient()
+  const [showHistory, setShowHistory] = useState(false)
   const [confirmModalOrder, setConfirmModalOrder] = useState<StaffOrder | null>(null)
   const [amountReceived, setAmountReceived] = useState<string>('')
   const receiptRef = useRef<HTMLDivElement>(null)
@@ -144,6 +221,10 @@ export default function Cashier() {
           <p className="text-body text-ink-soft mt-2">Manage payments and order handovers.</p>
         </div>
         <div className="flex items-center gap-4">
+          <button onClick={() => setShowHistory(true)} className="btn-secondary px-6 py-3 shadow-md flex items-center gap-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            History
+          </button>
           <Link to="/cashier/pos" className="btn-gradient px-6 py-3 shadow-md flex items-center gap-2">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             New Order
@@ -269,6 +350,10 @@ export default function Cashier() {
             </div>
           </Section>
         </div>
+      )}
+
+      {showHistory && (
+        <OrderHistoryModal onClose={() => setShowHistory(false)} onPrint={handlePrint} />
       )}
     </div>
   )

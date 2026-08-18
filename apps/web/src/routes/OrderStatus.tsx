@@ -154,6 +154,23 @@ export default function OrderStatus() {
     },
   })
 
+  const orderData = data?.order
+  const { title, detail, icon } = orderData ? headline(orderData.status, t) : { title: '', detail: '', icon: '' }
+  const cancellable = orderData ? (orderData.status === Status.PLACED || orderData.status === Status.CASH_PENDING) : false
+  
+  const prevStatusRef = useRef(orderData?.status)
+  useEffect(() => {
+    if (orderData && prevStatusRef.current !== orderData.status) {
+      if (orderData.status === Status.READY) {
+        playSuccessChime()
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          new Notification(title, { body: detail })
+        }
+      }
+      prevStatusRef.current = orderData.status
+    }
+  }, [orderData?.status, title, detail])
+
   if (isPending) {
     return (
       <div className="min-h-dvh bg-ground transition-colors md:p-6 md:flex md:justify-center">
@@ -202,7 +219,7 @@ export default function OrderStatus() {
     )
   }
 
-  if (isError || !data) {
+  if (isError || !data || !orderData) {
     return (
       <main className="bg-ground flex min-h-dvh items-center justify-center px-4">
         <Card variant="glass" className="max-w-sm px-8 py-10 text-center animate-fade-in shadow-lg border-border">
@@ -218,22 +235,7 @@ export default function OrderStatus() {
     )
   }
 
-  const { order } = data
-  const { title, detail, icon } = headline(order.status, t)
-  const cancellable = order.status === Status.PLACED || order.status === Status.CASH_PENDING
-  
-  const prevStatusRef = useRef(order.status)
-  useEffect(() => {
-    if (prevStatusRef.current !== order.status) {
-      if (order.status === Status.READY) {
-        playSuccessChime()
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          new Notification(title, { body: detail })
-        }
-      }
-      prevStatusRef.current = order.status
-    }
-  }, [order.status, title, detail])
+  const order = orderData
   
   // Choose a semantic accent color based on status
   let statusColorClass = 'text-accent'
