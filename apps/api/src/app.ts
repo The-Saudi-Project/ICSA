@@ -75,7 +75,7 @@ export function createApp(): Express {
       },
       credentials: true, // required for the refresh-token cookie in Step 2
       methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Request-Id'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Request-Id', 'X-Tab-Id'],
       exposedHeaders: ['X-Request-Id'],
       maxAge: 600,
     }),
