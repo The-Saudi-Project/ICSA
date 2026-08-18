@@ -656,7 +656,9 @@ export async function confirmCashPayment(id: string): Promise<OrderView> {
   try {
     const { getIO } = await import('../../core/socket.js')
     getIO().to(`restaurant_${updated.restaurantId}`).emit('order_updated')
-  } catch (err) {}
+  } catch (err) {
+    logger.warn({ err }, 'failed to emit order_updated')
+  }
   
   return toOrderView(updated)
 }
