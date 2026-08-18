@@ -1,9 +1,9 @@
-import { OrderStatus } from '@rw/shared'
+import { OrderStatus, PaymentStatus } from '@rw/shared'
 import { useEffect, useState, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Price } from '../../components/Price.js'
 import { minutesSince } from '../../lib/format.js'
-import { confirmCash, transitionOrder, fetchBoard, getStaffUser, staffApi, type StaffOrder } from '../../lib/staffApi.js'
+import { confirmCash, fetchBoard, getStaffUser, staffApi, type StaffOrder } from '../../lib/staffApi.js'
 import { Link } from 'react-router'
 import { Card } from '../../components/ui/Card.js'
 import { ReceiptPrint } from '../../components/ReceiptPrint.js'
@@ -66,17 +66,11 @@ export default function Cashier() {
     onSettled: invalidate,
   })
 
-  const complete = useMutation({
-    mutationFn: (order: StaffOrder) =>
-      transitionOrder(order.id, OrderStatus.COMPLETED, order.status),
-    onSettled: invalidate,
-  })
-
   const orders = data?.orders ?? []
-  const awaitingPayment = orders.filter((o) => o.status === OrderStatus.CASH_PENDING)
+  const awaitingPayment = orders.filter((o) => o.paymentStatus === PaymentStatus.CASH_PENDING)
   const ready = orders.filter((o) => o.status === OrderStatus.READY)
   const inProgress = orders.filter(
-    (o) => o.status !== OrderStatus.CASH_PENDING && o.status !== OrderStatus.READY,
+    (o) => o.paymentStatus !== PaymentStatus.CASH_PENDING && o.status !== OrderStatus.READY && o.status !== OrderStatus.COMPLETED
   )
 
   return (
@@ -230,15 +224,6 @@ export default function Cashier() {
                     >
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                       Print
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => complete.mutate(order)}
-                      disabled={complete.isPending}
-                      className="bg-status-success-wash border-2 border-status-success text-status-success hover:bg-status-success hover:text-white shadow-lg hover:shadow-status-success/30 hover:-translate-y-0.5 transition-all rounded-xl px-10 py-4 font-bold flex items-center justify-center gap-3 disabled:opacity-50"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5l10 -10"></path></svg>
-                      Handed Over
                     </button>
                     <button
                       type="button"

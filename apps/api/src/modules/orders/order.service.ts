@@ -623,7 +623,8 @@ export async function transitionOrder(
  * status change that happens to mean "money received".
  */
 export async function confirmCashPayment(id: string): Promise<OrderView> {
-  const order = await tenantRepo(OrderModel).findById(id)
+  const repo = tenantRepo(OrderModel)
+  const order = await repo.findById(id)
   if (!order) throw notFound('Order not found')
 
   if (order.paymentMethod !== PaymentMethod.CASH) {
@@ -635,7 +636,29 @@ export async function confirmCashPayment(id: string): Promise<OrderView> {
     throw conflict('This order is already paid')
   }
 
-  return transitionOrder(id, OrderStatus.CONFIRMED, { reason: 'cash received' })
+  // If the order was held waiting for cash, transition it forward.
+  if (order.status === OrderStatus.CASH_PENDING) {
+    return transitionOrder(id, OrderStatus.CONFIRMED, { reason: 'cash received' })
+  }
+
+  // Otherwise, the kitchen already started (kitchenStartsBeforePayment = true).
+  // Just record the payment without changing the order status.
+  const updated = await repo.findOneAndUpdate(
+    { _id: order._id, paymentStatus: order.paymentStatus },
+    { $set: { paymentStatus: PaymentStatus.PAID } },
+    { new: true }
+  )
+  
+  if (!updated) {
+    throw conflict('This order was changed by someone else. Refresh and try again.')
+  }
+  
+  try {
+    const { getIO } = await import('../../core/socket.js')
+    getIO().to(`restaurant_${updated.restaurantId}`).emit('order_updated')
+  } catch (err) {}
+  
+  return toOrderView(updated)
 }
 
 /**
