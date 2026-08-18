@@ -16,7 +16,7 @@
  * email addresses exist.
  */
 
-import { RestaurantStatus, UserStatus } from '@rw/shared'
+import { RestaurantStatus, Role, UserStatus } from '@rw/shared'
 import { env } from '../../config/env.js'
 import { hashIp, writeAudit } from '../../core/audit.js'
 import {
@@ -50,8 +50,14 @@ export interface AuthResult {
   refreshExpiresAt: Date
 }
 
-function refreshExpiry(): Date {
-  return new Date(Date.now() + env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000)
+function refreshExpiry(role?: string): Date {
+  let hours = env.REFRESH_TOKEN_TTL_DAYS * 24
+  if (role === Role.WAITER || role === Role.CASHIER) {
+    hours = 6
+  } else if (role === Role.KITCHEN) {
+    hours = 24
+  }
+  return new Date(Date.now() + hours * 60 * 60 * 1000)
 }
 
 async function issueTokens(
@@ -67,7 +73,7 @@ async function issueTokens(
   })
 
   const refreshToken = generateToken()
-  const refreshExpiresAt = refreshExpiry()
+  const refreshExpiresAt = refreshExpiry(user.role)
 
   await RefreshTokenModel.create({
     tokenHash: sha256(refreshToken),
