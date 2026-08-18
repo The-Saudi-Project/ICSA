@@ -10,7 +10,6 @@ import { Button } from '../components/ui/Button.js'
 import { Input } from '../components/ui/Input.js'
 import { Card } from '../components/ui/Card.js'
 import { useI18n } from '../lib/i18n.js'
-import confetti from 'canvas-confetti'
 
 export default function Cart() {
   const cart = useCart()
@@ -32,18 +31,9 @@ export default function Cart() {
         idempotencyKey,
         note.trim() || undefined,
       )
+      
       clearCart()
-      
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
-      })
-      
-      setTimeout(() => {
-        void navigate(`/order/${order.publicId}`, { replace: true })
-      }, 1500)
+      void navigate(`/order/${order.publicId}`, { replace: true })
     } catch (err) {
       const message =
         err instanceof ApiError

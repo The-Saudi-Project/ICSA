@@ -45,6 +45,8 @@ import { I18nProvider } from './lib/i18n.js'
 import { FocusManager } from './components/FocusManager.js'
 import { ToastProvider } from './components/ToastContext.js'
 
+import { ErrorBoundary } from './components/ErrorBoundary.js'
+
 export default function App() {
   return (
     <I18nProvider>
@@ -59,44 +61,46 @@ export default function App() {
             >
               Skip to main content
             </a>
-            <Routes>
-              <Route path="/" element={<NoTable />} />
-              <Route path="/t/:token" element={<Suspense fallback={<Fallback />}><TableEntry /></Suspense>} />
-              <Route path="/menu" element={<Suspense fallback={<Fallback />}><Menu /></Suspense>} />
-              <Route path="/item/:id" element={<Suspense fallback={<Fallback />}><ItemDetail /></Suspense>} />
-              <Route path="/cart" element={<Suspense fallback={<Fallback />}><Cart /></Suspense>} />
-              <Route path="/my-orders" element={<Suspense fallback={<Fallback />}><MyOrders /></Suspense>} />
-              <Route path="/order/:publicId" element={<Suspense fallback={<Fallback />}><OrderStatus /></Suspense>} />
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/" element={<NoTable />} />
+                  <Route path="/t/:token" element={<Suspense fallback={<Fallback />}><TableEntry /></Suspense>} />
+                  <Route path="/menu" element={<Suspense fallback={<Fallback />}><Menu /></Suspense>} />
+                  <Route path="/item/:id" element={<Suspense fallback={<Fallback />}><ItemDetail /></Suspense>} />
+                  <Route path="/cart" element={<Suspense fallback={<Fallback />}><Cart /></Suspense>} />
+                  <Route path="/my-orders" element={<Suspense fallback={<Fallback />}><MyOrders /></Suspense>} />
+                  <Route path="/order/:publicId" element={<Suspense fallback={<Fallback />}><OrderStatus /></Suspense>} />
 
-              <Route path="/staff/login" element={<Suspense fallback={<Fallback />}><Login /></Suspense>} />
-              <Route path="/staff/password" element={<RequireStaff><Suspense fallback={<Fallback />}><ChangePassword /></Suspense></RequireStaff>} />
-            
-              <Route element={<RequireStaff><Suspense fallback={<Fallback />}><StaffLayout /></Suspense></RequireStaff>}>
-                <Route path="/dashboard" element={<Suspense fallback={<Fallback />}><Dashboard /></Suspense>} />
-                <Route path="/kitchen" element={<Suspense fallback={<Fallback />}><Kitchen /></Suspense>} />
-                <Route path="/cashier" element={<Suspense fallback={<Fallback />}><Cashier /></Suspense>} />
-                <Route path="/cashier/pos" element={<Suspense fallback={<Fallback />}><WaiterPOS /></Suspense>} />
-                <Route path="/waiter" element={<Suspense fallback={<Fallback />}><Waiter /></Suspense>} />
-                <Route path="/waiter/pos" element={<Suspense fallback={<Fallback />}><WaiterPOS /></Suspense>} />
+                  <Route path="/staff/login" element={<Suspense fallback={<Fallback />}><Login /></Suspense>} />
+                  <Route path="/staff/password" element={<RequireStaff><Suspense fallback={<Fallback />}><ChangePassword /></Suspense></RequireStaff>} />
+                
+                  <Route element={<RequireStaff><Suspense fallback={<Fallback />}><StaffLayout /></Suspense></RequireStaff>}>
+                    <Route path="/dashboard" element={<Suspense fallback={<Fallback />}><Dashboard /></Suspense>} />
+                    <Route path="/kitchen" element={<Suspense fallback={<Fallback />}><Kitchen /></Suspense>} />
+                    <Route path="/cashier" element={<Suspense fallback={<Fallback />}><Cashier /></Suspense>} />
+                    <Route path="/cashier/pos" element={<Suspense fallback={<Fallback />}><WaiterPOS /></Suspense>} />
+                    <Route path="/waiter" element={<Suspense fallback={<Fallback />}><Waiter /></Suspense>} />
+                    <Route path="/waiter/pos" element={<Suspense fallback={<Fallback />}><WaiterPOS /></Suspense>} />
 
-                <Route path="/admin">
-                  <Route index element={<Navigate to="menu" replace />} />
-                  <Route path="menu" element={<Suspense fallback={<Fallback />}><AdminMenu /></Suspense>} />
-                  <Route path="history" element={<Suspense fallback={<Fallback />}><AdminHistory /></Suspense>} />
-                  <Route path="settings" element={<Suspense fallback={<Fallback />}><AdminSettings /></Suspense>} />
-                  <Route path="tables" element={<Suspense fallback={<Fallback />}><AdminTables /></Suspense>} />
-                  <Route path="staff" element={<Suspense fallback={<Fallback />}><AdminStaff /></Suspense>} />
-                  <Route path="health" element={<Suspense fallback={<Fallback />}><AdminHealth /></Suspense>} />
-                </Route>
-                <Route path="/platform">
-                  <Route index element={<Suspense fallback={<Fallback />}><Platform /></Suspense>} />
-                  <Route path="tenants" element={<Suspense fallback={<Fallback />}><Platform /></Suspense>} />
-                  <Route path="tenants/:id" element={<Suspense fallback={<Fallback />}><PlatformTenantDetail /></Suspense>} />
-                  <Route path="security" element={<Suspense fallback={<Fallback />}><Platform /></Suspense>} />
-                </Route>
-              </Route>
-            </Routes>
-          </BrowserRouter>
+                    <Route path="/admin">
+                      <Route index element={<Navigate to="menu" replace />} />
+                      <Route path="menu" element={<Suspense fallback={<Fallback />}><AdminMenu /></Suspense>} />
+                      <Route path="history" element={<Suspense fallback={<Fallback />}><AdminHistory /></Suspense>} />
+                      <Route path="settings" element={<Suspense fallback={<Fallback />}><AdminSettings /></Suspense>} />
+                      <Route path="tables" element={<Suspense fallback={<Fallback />}><AdminTables /></Suspense>} />
+                      <Route path="staff" element={<Suspense fallback={<Fallback />}><AdminStaff /></Suspense>} />
+                      <Route path="health" element={<Suspense fallback={<Fallback />}><AdminHealth /></Suspense>} />
+                    </Route>
+                    <Route path="/platform">
+                      <Route index element={<Suspense fallback={<Fallback />}><Platform /></Suspense>} />
+                      <Route path="tenants" element={<Suspense fallback={<Fallback />}><Platform /></Suspense>} />
+                      <Route path="tenants/:id" element={<Suspense fallback={<Fallback />}><PlatformTenantDetail /></Suspense>} />
+                      <Route path="security" element={<Suspense fallback={<Fallback />}><Platform /></Suspense>} />
+                    </Route>
+                  </Route>
+                </Routes>
+              </ErrorBoundary>
+            </BrowserRouter>
         </ToastProvider>
       </QueryClientProvider>
     </ThemeProvider>

@@ -1,13 +1,17 @@
 import { type Server as HttpServer } from 'node:http'
 import { Server as SocketIOServer } from 'socket.io'
 import { logger } from './logger.js'
-
+import { env } from '../config/env.js'
 let io: SocketIOServer | null = null
 
 export function initSocket(server: HttpServer): SocketIOServer {
   io = new SocketIOServer(server, {
     cors: {
-      origin: '*', // Adjust to match the Express app CORS policy
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true)
+        if (env.corsOrigins.includes(origin)) return callback(null, true)
+        callback(null, false)
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },
