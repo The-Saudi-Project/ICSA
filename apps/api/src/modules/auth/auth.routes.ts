@@ -35,6 +35,25 @@ function fingerprint(req: Request) {
   return { ip: req.ip, userAgent: req.header('user-agent') }
 }
 
+function getCookieDictionary(req: Request): Record<string, string> {
+  const raw = (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE]
+  if (!raw) return {}
+  try {
+    const dict = JSON.parse(raw)
+    return typeof dict === 'object' && dict !== null ? dict : {}
+  } catch {
+    return {}
+  }
+}
+
+function pruneDictionary(dict: Record<string, string>): Record<string, string> {
+  const keys = Object.keys(dict)
+  if (keys.length <= 20) return dict
+  const newDict: Record<string, string> = {}
+  keys.slice(-20).forEach((k) => { newDict[k] = dict[k]! })
+  return newDict
+}
+
 export const authRouter: Router = Router()
 
 /**
@@ -76,10 +95,14 @@ authRouter.post(
   validate({ body: loginSchema }),
   async (req: Request, res: Response) => {
     const { email, password } = req.body as { email: string; password: string }
+    const tabId = req.header('x-tab-id') || 'default'
 
     const result = await authService.login(email, password, fingerprint(req))
 
-    res.cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions(result.refreshExpiresAt))
+    const dict = getCookieDictionary(req)
+    dict[tabId] = result.refreshToken
+
+    res.cookie(REFRESH_COOKIE, JSON.stringify(pruneDictionary(dict)), refreshCookieOptions(result.refreshExpiresAt))
     res.status(200).json({
       user: result.user,
       accessToken: result.accessToken,
@@ -89,12 +112,15 @@ authRouter.post(
 )
 
 authRouter.post('/refresh', refreshRateLimit, async (req: Request, res: Response) => {
-  const raw = (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE]
+  const tabId = req.header('x-tab-id') || 'default'
+  const dict = getCookieDictionary(req)
+  const raw = dict[tabId]
   if (!raw) throw unauthenticated('Session expired')
 
   const result = await authService.refresh(raw, fingerprint(req))
 
-  res.cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions(result.refreshExpiresAt))
+  dict[tabId] = result.refreshToken
+  res.cookie(REFRESH_COOKIE, JSON.stringify(pruneDictionary(dict)), refreshCookieOptions(result.refreshExpiresAt))
   res.status(200).json({
     user: result.user,
     accessToken: result.accessToken,
@@ -103,11 +129,22 @@ authRouter.post('/refresh', refreshRateLimit, async (req: Request, res: Response
 })
 
 authRouter.post('/logout', async (req: Request, res: Response) => {
-  const raw = (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE]
+  const tabId = req.header('x-tab-id') || 'default'
+  const dict = getCookieDictionary(req)
+  const raw = dict[tabId]
 
-  await authService.logout(raw)
+  if (raw) {
+    await authService.logout(raw)
+    delete dict[tabId]
+  }
 
-  res.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH })
+  if (Object.keys(dict).length === 0) {
+    res.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH })
+  } else {
+    // Keep cookie for other tabs
+    const expires = new Date(Date.now() + env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000)
+    res.cookie(REFRESH_COOKIE, JSON.stringify(dict), refreshCookieOptions(expires))
+  }
   res.status(204).end()
 })
 

@@ -52,6 +52,15 @@ export class StaffApiError extends Error {
   }
 }
 
+function getTabId(): string {
+  let tabId = sessionStorage.getItem('rw_tab_id')
+  if (!tabId) {
+    tabId = Math.random().toString(36).slice(2, 10)
+    sessionStorage.setItem('rw_tab_id', tabId)
+  }
+  return tabId
+}
+
 async function parse(res: Response): Promise<unknown> {
   if (res.status === 204) return null
   const text = await res.text()
@@ -71,6 +80,7 @@ async function raw<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: {
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      'X-Tab-Id': getTabId(),
       ...init.headers,
     },
   })
@@ -146,7 +156,10 @@ export async function staffApi<T>(path: string, init: RequestInit = {}): Promise
 async function rawBlob(path: string): Promise<Blob> {
   const res = await fetch(`${BASE}${path}`, {
     credentials: 'include',
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      'X-Tab-Id': getTabId(),
+    },
   })
   if (!res.ok) {
     throw new StaffApiError(res.status, 'Could not load that image.')
