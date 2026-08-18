@@ -9,7 +9,7 @@
 
 import { getSession, getTableToken, setSession, type TableSession } from './session.js'
 
-const BASE = '/api/v1'
+const BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
 export class ApiError extends Error {
   constructor(

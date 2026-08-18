@@ -55,14 +55,13 @@ function requireValidOrigin(req: Request, _res: Response, next: NextFunction) {
     throw unauthenticated('Missing origin verification')
   }
 
-  // Ensure origin matches the expected web URL in production (or localhost in dev)
-  const expectedOrigin = env.isProduction ? env.PUBLIC_APP_URL : 'http://localhost'
+  // Ensure origin is in the allowed CORS list
   
-  if (origin && !origin.startsWith(expectedOrigin)) {
+  if (origin && !env.corsOrigins.includes(origin)) {
     throw unauthenticated('Invalid origin')
   }
   
-  if (!origin && referer && !referer.startsWith(expectedOrigin)) {
+  if (!origin && referer && !env.corsOrigins.some(o => referer.startsWith(o))) {
     throw unauthenticated('Invalid referer')
   }
 

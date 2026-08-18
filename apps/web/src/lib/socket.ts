@@ -5,7 +5,8 @@ let socketInstance: Socket | null = null
 
 export function getSocket(): Socket {
   if (!socketInstance) {
-    socketInstance = io({
+    const url = import.meta.env.VITE_API_URL || undefined
+    socketInstance = io(url, {
       autoConnect: false,
       withCredentials: true,
     })

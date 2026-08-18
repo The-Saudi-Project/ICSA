@@ -14,7 +14,7 @@
 
 import type { OrderStatus } from '@rw/shared'
 
-const BASE = '/api/v1'
+const BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
 export interface StaffUser {
   id: string
@@ -265,7 +265,8 @@ export const updateSettings = (settings: unknown) =>
   })
 
 export const downloadBackup = () => {
-  window.location.href = '/api/app/dashboard/backup'
+  const base = import.meta.env.VITE_API_URL || ''
+  window.location.href = `${base}/api/v1/app/dashboard/backup`
 }
 
 export interface RestaurantStats {
