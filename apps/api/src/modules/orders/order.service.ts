@@ -326,7 +326,7 @@ export async function staffCreateOrder(
     const restaurant = await RestaurantModel.findById(restaurantId)
     if (!restaurant) throw notFound('Restaurant not found')
 
-    let table: Record<string, unknown> | null = null
+    let table: { label?: string } | null = null
     let sessionId: unknown = null
 
     if (input.tableId) {

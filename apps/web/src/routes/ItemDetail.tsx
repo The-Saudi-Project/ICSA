@@ -282,7 +282,7 @@ export default function ItemDetail() {
             <div className="mt-12 pt-8 border-t border-border">
               <h3 className="text-h3 font-bold text-ink mb-6">Customer Reviews</h3>
               <ul className="space-y-6">
-                {reviews.map((r: unknown, idx: number) => (
+                {(reviews as Array<{ customerName: string; rating: number; comment?: string }>).map((r, idx: number) => (
                   <li key={idx} className="bg-surface p-4 rounded-2xl border border-border/50">
                     <div className="flex justify-between items-start mb-2">
                        <span className="font-bold text-ink">{r.customerName}</span>

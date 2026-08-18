@@ -256,10 +256,10 @@ export const refundOrder = (id: string) =>
   })
 
 export const getSettings = () =>
-  staffApi<{ settings: unknown }>('/app/restaurants/settings')
+  staffApi<{ settings: { estimatedWaitMinutes?: number; vatRatePercent?: number; serviceChargePercent?: number; pricesIncludeVat?: boolean; kitchenStartsBeforePayment?: boolean } }>('/app/restaurants/settings')
 
 export const updateSettings = (settings: unknown) =>
-  staffApi<{ settings: unknown }>('/app/restaurants/settings', {
+  staffApi<{ settings: { estimatedWaitMinutes?: number; vatRatePercent?: number; serviceChargePercent?: number; pricesIncludeVat?: boolean; kitchenStartsBeforePayment?: boolean } }>('/app/restaurants/settings', {
     method: 'PATCH',
     body: JSON.stringify(settings)
   })

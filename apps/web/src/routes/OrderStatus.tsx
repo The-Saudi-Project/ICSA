@@ -24,7 +24,7 @@ function ReviewModal({ itemId, orderPublicId, onClose }: { itemId: string; order
       alert('Thanks for your review!')
       onClose()
     },
-    onError: (e: unknown) => {
+    onError: (e: Error) => {
       alert(e.message || 'Error submitting review')
     }
   })
