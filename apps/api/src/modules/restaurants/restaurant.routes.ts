@@ -49,7 +49,7 @@ restaurantRouter.patch(
   async (_req: Request, res: Response) => {
     const restaurantId = requireTenantId()
     
-    const updatePayload: Record<string, any> = {}
+    const updatePayload: Record<string, unknown> = {}
     if (_req.body.vatRatePercent !== undefined) updatePayload['settings.vatRatePercent'] = _req.body.vatRatePercent
     if (_req.body.serviceChargePercent !== undefined) updatePayload['settings.serviceChargePercent'] = _req.body.serviceChargePercent
     if (_req.body.pricesIncludeVat !== undefined) updatePayload['settings.pricesIncludeVat'] = _req.body.pricesIncludeVat

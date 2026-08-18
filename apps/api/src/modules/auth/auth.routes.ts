@@ -7,7 +7,7 @@
  */
 
 import { changePasswordSchema, loginSchema } from '@rw/shared'
-import { Router, type CookieOptions, type Request, type Response } from 'express'
+import { Router, type CookieOptions, type Request, type Response, type NextFunction } from 'express'
 import { env } from '../../config/env.js'
 import { getContext } from '../../core/context.js'
 import { unauthenticated } from '../../core/errors.js'
@@ -42,7 +42,7 @@ export const authRouter: Router = Router()
  * Enforces that state-changing requests originate from our own application by
  * verifying the Origin or Referer header matches expected values.
  */
-function requireValidOrigin(req: Request, _res: Response, next: import('express').NextFunction) {
+function requireValidOrigin(req: Request, _res: Response, next: NextFunction) {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
     return next()
   }

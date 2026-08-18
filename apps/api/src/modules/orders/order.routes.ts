@@ -143,7 +143,7 @@ orderRouter.post(
   async (req: Request, res: Response) => {
     const idempotencyKey = req.headers['x-idempotency-key'] as string
     const result = await orderService.staffCreateOrder(
-      req.body as any,
+      req.body as unknown,
       idempotencyKey,
     )
     if (result.replayed) {

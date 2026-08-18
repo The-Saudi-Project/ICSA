@@ -228,7 +228,7 @@ export const transitionOrder = (id: string, to: OrderStatus, expectedCurrentStat
     body: JSON.stringify({ to, ...(expectedCurrentStatus ? { expectedCurrentStatus } : {}) }),
   })
 
-export const staffCreateOrder = (body: any, idempotencyKey: string) =>
+export const staffCreateOrder = (body: unknown, idempotencyKey: string) =>
   staffApi<{ order: StaffOrder }>('/app/orders/staff-create', {
     method: 'POST',
     headers: { 'X-Idempotency-Key': idempotencyKey },
@@ -256,10 +256,10 @@ export const refundOrder = (id: string) =>
   })
 
 export const getSettings = () =>
-  staffApi<{ settings: any }>('/app/restaurants/settings')
+  staffApi<{ settings: unknown }>('/app/restaurants/settings')
 
-export const updateSettings = (settings: any) =>
-  staffApi<{ settings: any }>('/app/restaurants/settings', {
+export const updateSettings = (settings: unknown) =>
+  staffApi<{ settings: unknown }>('/app/restaurants/settings', {
     method: 'PATCH',
     body: JSON.stringify(settings)
   })
@@ -648,7 +648,7 @@ export const disablePlatformRestaurantStaff = (id: string, staffId: string) =>
   })
 
 export const updatePlatformSubscription = (id: string, body: { plan: string; status: string }) =>
-  staffApi<{ subscription: any }>(`/platform/restaurants/${id}/subscription`, {
+  staffApi<{ subscription: unknown }>(`/platform/restaurants/${id}/subscription`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   })

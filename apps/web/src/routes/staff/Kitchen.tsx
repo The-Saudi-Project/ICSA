@@ -49,7 +49,8 @@ export default function Kitchen() {
   
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(console.error)
+      document.documentElement.requestFullscreen().catch(// eslint-disable-next-line no-console
+      console.error)
     } else {
       document.exitFullscreen()
     }

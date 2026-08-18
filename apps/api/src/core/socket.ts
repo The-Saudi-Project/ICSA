@@ -1,4 +1,4 @@
-import { Server as HttpServer } from 'node:http'
+import { type Server as HttpServer } from 'node:http'
 import { Server as SocketIOServer } from 'socket.io'
 import { logger } from './logger.js'
 

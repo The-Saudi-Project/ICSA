@@ -326,8 +326,8 @@ export async function staffCreateOrder(
     const restaurant = await RestaurantModel.findById(restaurantId)
     if (!restaurant) throw notFound('Restaurant not found')
 
-    let table: any = null
-    let sessionId: any = null
+    let table: Record<string, unknown> | null = null
+    let sessionId: unknown = null
 
     if (input.tableId) {
       table = await TableModel.findOne({ _id: input.tableId }).setOptions({ unscoped: true })
@@ -442,7 +442,7 @@ export async function listOrdersForSession(options?: { cursor?: string; limit?: 
 
   const limit = options?.limit ?? 20
   
-  const query: any = { tableSessionId: sessionId }
+  const query: Record<string, unknown> = { tableSessionId: sessionId }
   if (options?.cursor) {
     query.createdAt = { $lt: new Date(options.cursor) }
   }

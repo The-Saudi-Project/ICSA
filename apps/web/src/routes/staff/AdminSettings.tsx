@@ -26,7 +26,7 @@ export default function AdminSettings() {
 
   const saveSettings = useMutation({
     mutationFn: () => {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         pricesIncludeVat,
         kitchenStartsBeforePayment
       }
@@ -129,7 +129,7 @@ export default function AdminSettings() {
               onClick={async () => {
                 try {
                   await downloadBackup();
-                } catch (err) {
+                } catch {
                   alert("Failed to download backup");
                 }
               }}

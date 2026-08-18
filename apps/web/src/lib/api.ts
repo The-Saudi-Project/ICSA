@@ -248,10 +248,10 @@ export const submitReview = (body: {
   rating: number
   comment?: string
   customerName: string
-}) => api<{ review: any }>('/public/reviews', { method: 'POST', body: JSON.stringify(body) })
+}) => api<{ review: unknown }>('/public/reviews', { method: 'POST', body: JSON.stringify(body) })
 
 export const getReviews = (menuItemId: string) =>
-  api<{ reviews: any[] }>(`/public/menu/${menuItemId}/reviews`)
+  api<{ reviews: unknown[] }>(`/public/menu/${menuItemId}/reviews`)
 
 export const fetchRestaurantStatus = () =>
   api<{ estimatedWaitMinutes: number }>('/public/restaurant/status')
