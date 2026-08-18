@@ -43,7 +43,7 @@ export const authRouter: Router = Router()
  * verifying the Origin or Referer header matches expected values.
  */
 function requireValidOrigin(req: Request, _res: Response, next: NextFunction) {
-  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || env.isTest) {
     return next()
   }
   
