@@ -24,7 +24,7 @@ function refreshCookieOptions(expires: Date): CookieOptions {
   return {
     httpOnly: true, // unreadable from JavaScript, so XSS cannot exfiltrate it
     secure: env.isProduction, // HTTPS only in production
-    sameSite: 'lax', // works because api. and app. are sibling subdomains
+    sameSite: env.isProduction ? 'none' : 'lax', // 'none' required for cross-domain (Vercel/Cloudflare -> Render)
     path: REFRESH_COOKIE_PATH, // never sent to ordinary API routes
     expires,
     ...(env.COOKIE_DOMAIN ? { domain: env.COOKIE_DOMAIN } : {}),
