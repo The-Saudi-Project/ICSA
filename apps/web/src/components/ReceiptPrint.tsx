@@ -6,7 +6,7 @@ export const ReceiptPrint = forwardRef<HTMLDivElement, { order: StaffOrder | nul
   if (!order) return null
 
   return (
-    <div ref={ref} className="print-only p-4 font-mono text-black bg-white w-full max-w-sm mx-auto">
+    <div ref={ref} className="hidden print:block p-4 font-mono text-black bg-white w-full max-w-sm mx-auto">
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold uppercase">Restaurant Webapp</h1>
         <p className="text-sm">Tax Invoice</p>

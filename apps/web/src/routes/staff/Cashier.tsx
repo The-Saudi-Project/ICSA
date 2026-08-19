@@ -25,7 +25,7 @@ function OrderHistoryModal({ onClose, onPrint }: { onClose: () => void, onPrint:
   })
 
   return (
-    <div className="fixed inset-0 z-[60] flex justify-end md:items-center md:justify-center">
+    <div className="fixed inset-0 z-[60] flex justify-end md:items-center md:justify-center no-print">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
       
       <div className="relative z-10 w-full md:max-w-3xl h-full md:h-auto md:max-h-[85vh] bg-surface md:rounded-[32px] shadow-2xl flex flex-col animate-slide-up border-l md:border border-border">
@@ -151,12 +151,10 @@ export default function Cashier() {
   )
 
   return (
-    <div className="max-w-6xl mx-auto pt-10 pb-20 animate-fade-in relative px-6 no-print">
-      <div className="hidden">
-        <ReceiptPrint ref={receiptRef} order={receiptOrder} />
-      </div>
-
-      {confirmModalOrder && (
+    <>
+      <ReceiptPrint ref={receiptRef} order={receiptOrder} />
+      <div className="max-w-6xl mx-auto pt-10 pb-20 animate-fade-in relative px-6 no-print">
+        {confirmModalOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmModalOrder(null)}></div>
           <Card variant="glass" className="relative z-10 w-full max-w-md p-8 shadow-2xl bg-ground">
@@ -355,7 +353,8 @@ export default function Cashier() {
       {showHistory && (
         <OrderHistoryModal onClose={() => setShowHistory(false)} onPrint={handlePrint} />
       )}
-    </div>
+      </div>
+    </>
   )
 }
 
