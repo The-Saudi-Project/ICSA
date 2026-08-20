@@ -119,11 +119,16 @@ export const ar: Translations = {
   goodAfternoon: 'مساء الخير',
   goodEvening: 'مساء الخير',
   dashboardDesc: "إليك ما يحدث في مطعمك اليوم.",
+  dashboardDescSelected: "إليك ما يحدث في مطعمك للفترة المحددة. راقب مؤشراتك الرئيسية وأدر العمليات في الوقت الفعلي.",
   revenue: 'الإيرادات',
   orders: 'الطلبات',
   activeTickets: 'الطلبات النشطة',
   staffOnline: 'الموظفون المتصلون',
   quickActions: 'إجراءات سريعة',
+  revenueTrend: 'اتجاه الإيرادات ({0})',
+  today: 'اليوم',
+  last7Days: 'آخر 7 أيام',
+  yearLabel: 'سنة {0}',
 
   // Kitchen
   kitchen: 'المطبخ',

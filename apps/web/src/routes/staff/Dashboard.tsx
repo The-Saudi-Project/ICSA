@@ -7,9 +7,11 @@ import { Skeleton } from '../../components/ui/Skeleton.js'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { Price } from '../../components/Price.js'
 
+import { useI18n } from '../../lib/i18n.js'
 import { useState } from 'react'
 
 export default function Dashboard() {
+  const { t, locale } = useI18n()
   const [period, setPeriod] = useState('today')
   const stats = useQuery({ queryKey: ['dashboard', 'stats', period], queryFn: () => fetchRestaurantStats(period) })
   const user = getStaffUser()
@@ -17,35 +19,35 @@ export default function Dashboard() {
 
   const getGreeting = () => {
     const hour = new Date().getHours()
-    if (hour < 12) return 'Good morning'
-    if (hour < 17) return 'Good afternoon'
-    return 'Good evening'
+    if (hour < 12) return t('goodMorning')
+    if (hour < 17) return t('goodAfternoon')
+    return t('goodEvening')
   }
 
   const generatePeriodOptions = () => {
     const options = [
-      { value: 'today', label: 'Today' },
-      { value: 'last_7_days', label: 'Last 7 Days' },
+      { value: 'today', label: t('today') },
+      { value: 'last_7_days', label: t('last7Days') },
     ];
     
     const d = new Date();
     for (let i = 0; i < 12; i++) {
       const monthDate = new Date(d.getFullYear(), d.getMonth() - i, 1);
       const value = `month_${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
-      const label = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const label = monthDate.toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { month: 'long', year: 'numeric' });
       options.push({ value, label });
     }
     
     for (let i = 0; i < 3; i++) {
       const year = d.getFullYear() - i;
-      options.push({ value: `year_${year}`, label: `Year ${year}` });
+      options.push({ value: `year_${year}`, label: t('yearLabel', year) });
     }
     
     return options;
   };
   
   const periodOptions = generatePeriodOptions();
-  const selectedPeriodLabel = periodOptions.find(o => o.value === period)?.label || 'Today';
+  const selectedPeriodLabel = periodOptions.find(o => o.value === period)?.label || t('today');
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 relative animate-fade-in pb-12 pt-16">
@@ -60,12 +62,12 @@ export default function Dashboard() {
             {getGreeting()}, <span className="text-accent">{firstName}</span>.
           </h1>
           <p className="text-body text-ink-soft mt-2 max-w-2xl">
-            Here's what's happening at your restaurant for the selected period. Monitor your key metrics and manage operations in real-time.
+            {t('dashboardDescSelected')}
           </p>
         </div>
         <div className="flex flex-col items-end gap-3">
           <p className="text-small font-bold text-ink-faint uppercase tracking-wider">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
           <div className="relative">
             <select 
@@ -110,7 +112,7 @@ export default function Dashboard() {
             {/* Revenue */}
             <Card variant="glass" className="p-6 flex flex-col justify-between bg-gradient-to-br from-surface to-surface-strong shadow-lg border-border/40 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-small font-bold text-ink-soft uppercase tracking-wider">Revenue</span>
+                <span className="text-small font-bold text-ink-soft uppercase tracking-wider">{t('revenue')}</span>
                 <div className="w-8 h-8 rounded-full bg-gold-wash text-gold flex items-center justify-center">
                   <span className="font-bold text-lg leading-none pb-0.5">⃁</span>
                 </div>
@@ -125,7 +127,7 @@ export default function Dashboard() {
             {/* Orders */}
             <Card variant="glass" className="p-6 flex flex-col justify-between bg-gradient-to-br from-surface to-surface-strong shadow-lg border-border/40 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-small font-bold text-ink-soft uppercase tracking-wider">Orders</span>
+                <span className="text-small font-bold text-ink-soft uppercase tracking-wider">{t('orders')}</span>
                 <div className="w-8 h-8 rounded-full bg-accent-wash text-accent flex items-center justify-center">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
                 </div>
@@ -145,7 +147,7 @@ export default function Dashboard() {
                     {stats.data.activeOrders > 0 && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>}
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
                   </span>
-                  Active Tickets
+                  {t('activeTickets')}
                 </span>
                 <div className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center shadow-md">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -159,7 +161,7 @@ export default function Dashboard() {
             {/* Staff Online */}
             <Card variant="glass" className="p-6 flex flex-col justify-between bg-gradient-to-br from-surface to-surface-strong shadow-lg border-border/40 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-small font-bold text-ink-soft uppercase tracking-wider">Staff Online</span>
+                <span className="text-small font-bold text-ink-soft uppercase tracking-wider">{t('staffOnline')}</span>
                 <div className="w-8 h-8 rounded-full bg-status-info-wash text-status-info flex items-center justify-center">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                 </div>
@@ -176,7 +178,7 @@ export default function Dashboard() {
       {!stats.isPending && !stats.error && stats.data?.trend && (
         <section className="relative z-10 mt-12">
           <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-h3 font-bold text-ink tracking-tight">Revenue Trend ({selectedPeriodLabel})</h2>
+            <h2 className="text-h3 font-bold text-ink tracking-tight">{t('revenueTrend', selectedPeriodLabel)}</h2>
             <div className="h-px bg-border flex-1 opacity-50"></div>
           </div>
           <Card variant="glass" className="p-6 h-[400px]">

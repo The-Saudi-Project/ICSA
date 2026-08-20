@@ -117,11 +117,16 @@ export const en = {
   goodAfternoon: 'Good afternoon',
   goodEvening: 'Good evening',
   dashboardDesc: "Here's what's happening at your restaurant today.",
+  dashboardDescSelected: "Here's what's happening at your restaurant for the selected period. Monitor your key metrics and manage operations in real-time.",
   revenue: 'Revenue',
   orders: 'Orders',
   activeTickets: 'Active Tickets',
   staffOnline: 'Staff Online',
   quickActions: 'Quick Actions',
+  revenueTrend: 'Revenue Trend ({0})',
+  today: 'Today',
+  last7Days: 'Last 7 Days',
+  yearLabel: 'Year {0}',
 
   // Kitchen
   kitchen: 'Kitchen',

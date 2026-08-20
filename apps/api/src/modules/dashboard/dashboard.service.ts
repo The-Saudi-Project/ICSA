@@ -47,21 +47,22 @@ export async function getRestaurantStats(period: string = 'today') {
     startDate.setDate(startDate.getDate() - 7);
     startDate.setHours(0, 0, 0, 0);
   } else if (period.startsWith('month_')) {
-    const [year, month] = period.split('_')[1].split('-');
-    startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-    endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
+    const datePart = period.split('_')[1] || '';
+    const [yearStr, monthStr] = datePart.split('-');
+    startDate = new Date(parseInt(yearStr || '0'), parseInt(monthStr || '1') - 1, 1);
+    endDate = new Date(parseInt(yearStr || '0'), parseInt(monthStr || '1'), 0, 23, 59, 59, 999);
   } else if (period.startsWith('year_')) {
-    const year = parseInt(period.split('_')[1]);
+    const yearStr = period.split('_')[1] || '';
+    const year = parseInt(yearStr || '0');
     startDate = new Date(year, 0, 1);
     endDate = new Date(year, 11, 31, 23, 59, 59, 999);
   }
 
-  const query: any = { placedAt: trusted({ $gte: startDate }) };
+  let dateCondition: Record<string, Date> = { $gte: startDate };
   if (period.startsWith('month_') || period.startsWith('year_')) {
-    query.placedAt = trusted({ $gte: startDate, $lte: endDate });
+    dateCondition = { $gte: startDate, $lte: endDate };
   }
-
-  const periodOrders = await tenantRepo(OrderModel).find(query);
+  const periodOrders = await tenantRepo(OrderModel).find({ placedAt: trusted(dateCondition) });
 
   let periodRevenueHalalas = 0;
   const periodOrdersCount = periodOrders.length;
@@ -94,10 +95,11 @@ export async function getRestaurantStats(period: string = 'today') {
     }
   } else if (period.startsWith('month_')) {
     const daysInMonth = endDate.getDate();
-    const [year, month] = period.split('_')[1].split('-');
+    const datePart = period.split('_')[1] || '';
+    const [yearStr, monthStr] = datePart.split('-');
     
     for (let i = 1; i <= daysInMonth; i++) {
-      const d = new Date(parseInt(year), parseInt(month) - 1, i);
+      const d = new Date(parseInt(yearStr || '0'), parseInt(monthStr || '1') - 1, i);
       const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       trendMap.set(key, { revenue: 0, orders: 0 });
     }
