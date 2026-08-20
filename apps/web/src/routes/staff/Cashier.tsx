@@ -1,16 +1,16 @@
 import { OrderStatus, PaymentStatus } from '@rw/shared'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Price } from '../../components/Price.js'
 import { minutesSince } from '../../lib/format.js'
 import { confirmCash, fetchBoard, fetchOrderHistory, getStaffUser, getSettings, staffApi, type StaffOrder } from '../../lib/staffApi.js'
 import { Link } from 'react-router'
 import { Card } from '../../components/ui/Card.js'
-import { ReceiptPrint } from '../../components/ReceiptPrint.js'
 import { SoundToggle } from '../../components/SoundToggle.js'
 import { useRestaurantSocket } from '../../lib/socket.js'
 import { playAlertBeep } from '../../lib/audio.js'
 import { useI18n } from '../../lib/i18n.js'
+import { printReceipt } from '../../lib/printReceipt.js'
 
 function OrderHistoryModal({ onClose, onPrint }: { onClose: () => void, onPrint: (order: StaffOrder) => void }) {
   const [dateStr, setDateStr] = useState<string>(() => new Date().toISOString().slice(0, 10))
@@ -93,8 +93,6 @@ export default function Cashier() {
   const [showHistory, setShowHistory] = useState(false)
   const [confirmModalOrder, setConfirmModalOrder] = useState<StaffOrder | null>(null)
   const [amountReceived, setAmountReceived] = useState<string>('')
-  const receiptRef = useRef<HTMLDivElement>(null)
-  const [receiptOrder, setReceiptOrder] = useState<StaffOrder | null>(null)
 
   const { data, isPending, isError } = useQuery({
     queryKey: ['board', 'cashier'],
@@ -134,11 +132,17 @@ export default function Cashier() {
     },
   })
 
+
+  const settings = settingsQuery.data?.settings
+
   const handlePrint = (order: StaffOrder) => {
-    setReceiptOrder(order)
-    setTimeout(() => {
-      window.print()
-    }, 100)
+    printReceipt({
+      order,
+      restaurantName: settings?.name?.en,
+      vatNumber: settings?.vatNumber,
+      cashierName: user?.name,
+      vatRatePercent: settings?.vatRatePercent,
+    })
   }
 
   const refund = useMutation({
@@ -153,19 +157,10 @@ export default function Cashier() {
     (o) => o.paymentStatus !== PaymentStatus.CASH_PENDING && o.status !== OrderStatus.READY && o.status !== OrderStatus.COMPLETED
   )
 
-  const settings = settingsQuery.data?.settings
 
   return (
     <>
-      <ReceiptPrint
-        ref={receiptRef}
-        order={receiptOrder}
-        vatNumber={settings?.vatNumber}
-        restaurantName={settings?.name?.en}
-        cashierName={user?.name}
-        vatRatePercent={settings?.vatRatePercent}
-      />
-      <div className="max-w-6xl mx-auto pt-10 pb-20 animate-fade-in relative px-6 no-print">
+      <div className="max-w-6xl mx-auto pt-10 pb-20 animate-fade-in relative px-6">
         {confirmModalOrder && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmModalOrder(null)}></div>
