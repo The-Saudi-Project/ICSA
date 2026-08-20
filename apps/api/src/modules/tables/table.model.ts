@@ -39,6 +39,7 @@ const tableSchema = new Schema(
     tokenVersion: { type: Number, default: 1 },
 
     status: { type: String, enum: Object.values(TableStatus), default: TableStatus.ACTIVE },
+    assignedWaiterId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },
 )

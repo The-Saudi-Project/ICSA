@@ -511,6 +511,7 @@ export interface AdminTable {
   tokenVersion: number
   /** Null when the stored token cannot be decrypted with the current key. */
   url: string | null
+  assignedWaiterId?: string | null
 }
 
 export const fetchTables = () => staffApi<{ tables: AdminTable[] }>('/app/tables')
@@ -526,7 +527,7 @@ export const rotateTableToken = (id: string) =>
     method: 'POST',
   })
 
-export const updateTable = (id: string, body: { label?: string; zone?: string; status?: string }) =>
+export const updateTable = (id: string, body: { label?: string; zone?: string; status?: string; assignedWaiterId?: string | null }) =>
   staffApi<{ table: AdminTable }>(`/app/tables/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(body),

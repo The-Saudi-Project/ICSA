@@ -58,6 +58,7 @@ export interface OrderView {
   placedAt: Date
   statusHistory?: unknown[]
   isRush?: boolean
+  assignedWaiterId?: string | null
 }
 
 function toOrderView(order: OrderDoc, includeHistory = false): OrderView {
@@ -76,6 +77,7 @@ function toOrderView(order: OrderDoc, includeHistory = false): OrderView {
     customerNote: order.customerNote,
     placedAt: order.placedAt,
     isRush: order.isRush ?? false,
+    assignedWaiterId: order.assignedWaiterId?.toString(),
     ...(includeHistory ? { statusHistory: order.statusHistory } : {}),
   }
 }
@@ -215,6 +217,7 @@ export async function createOrder(
       tableId: context.tableId,
       tableSessionId: context.tableSessionId,
       tableLabelSnapshot: table?.label,
+      assignedWaiterId: table?.assignedWaiterId,
       status,
       paymentMethod: input.paymentMethod,
       paymentStatus,
@@ -374,6 +377,7 @@ export async function staffCreateOrder(
       tableId: input.tableId || null,
       tableSessionId: sessionId,
       tableLabelSnapshot: table?.label,
+      assignedWaiterId: table?.assignedWaiterId,
       status,
       paymentMethod: input.paymentMethod,
       paymentStatus,

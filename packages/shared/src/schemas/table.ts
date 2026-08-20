@@ -15,6 +15,7 @@ export const updateTableSchema = z
     zone: z.string().trim().max(40).optional(),
     seats: z.coerce.number().int().min(1).max(50).optional(),
     status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+    assignedWaiterId: z.string().nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'no fields to update')
 export type UpdateTableInput = z.infer<typeof updateTableSchema>

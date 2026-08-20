@@ -85,8 +85,8 @@ const orderSchema = new Schema(
 
     tableId: { type: Schema.Types.ObjectId, ref: 'Table' },
     tableSessionId: { type: Schema.Types.ObjectId, ref: 'TableSession' },
-    /** So a renamed or deleted table does not change a past order. */
     tableLabelSnapshot: { type: String },
+    assignedWaiterId: { type: Schema.Types.ObjectId, ref: 'User' },
 
     status: { type: String, enum: Object.values(OrderStatus), required: true, index: true },
     paymentMethod: { type: String, enum: Object.values(PaymentMethod), required: true },

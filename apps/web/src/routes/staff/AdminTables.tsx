@@ -8,11 +8,13 @@ import {
   createTable,
   deleteTable,
   fetchStaffImage,
+  fetchStaff,
   fetchTables,
   rotateTableToken,
   updateTable,
   rawBlob,
   type AdminTable,
+  type AdminStaffMember,
 } from '../../lib/staffApi.js'
 import { Card } from '../../components/ui/Card.js'
 import { AdminSection, Field, inputClass, primaryButtonClass, quietButtonClass } from './AdminShell.js'
@@ -74,12 +76,19 @@ function EditTableRow({
   const queryClient = useQueryClient()
   const [label, setLabel] = useState(table.label)
   const [zone, setZone] = useState(table.zone ?? '')
+  const [assignedWaiterId, setAssignedWaiterId] = useState(table.assignedWaiterId ?? '')
+
+  const { data: staffData } = useQuery({ queryKey: ['admin', 'staff'], queryFn: fetchStaff })
+  const waiters = staffData?.staff?.filter((s) => s.role === 'WAITER') || []
 
   const save = useMutation({
     mutationFn: () => {
-      const body: { label?: string; zone?: string } = {}
+      const body: { label?: string; zone?: string; assignedWaiterId?: string | null } = {}
       if (label.trim() !== table.label) body.label = label.trim()
       if (zone.trim() !== (table.zone ?? '')) body.zone = zone.trim()
+      if (assignedWaiterId !== (table.assignedWaiterId ?? '')) {
+        body.assignedWaiterId = assignedWaiterId === '' ? null : assignedWaiterId
+      }
       if (Object.keys(body).length === 0) {
         onDone()
         return Promise.resolve({ table })
@@ -120,6 +129,20 @@ function EditTableRow({
         />
       </td>
       <td className="py-3 px-6">
+        <select
+          className={`${inputClass} !py-2 text-small`}
+          value={assignedWaiterId}
+          onChange={(e) => setAssignedWaiterId(e.target.value)}
+        >
+          <option value="">No Waiter Assigned</option>
+          {waiters.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td className="py-3 px-6">
         <span className="tnum rounded-full bg-surface-strong px-3 py-1 text-xs font-bold text-ink-soft ring-1 ring-border shadow-sm">
           v{table.tokenVersion}
         </span>
@@ -154,6 +177,8 @@ export default function AdminTables() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin', 'tables'] })
 
   const { data, isPending } = useQuery({ queryKey: ['admin', 'tables'], queryFn: fetchTables })
+  const { data: staffData } = useQuery({ queryKey: ['admin', 'staff'], queryFn: fetchStaff })
+  const waiters = staffData?.staff?.filter((s) => s.role === 'WAITER') || []
 
   const [label, setLabel] = useState('')
   const [zone, setZone] = useState('')
@@ -274,6 +299,7 @@ export default function AdminTables() {
               <tr className="border-b border-border/50 bg-surface-strong/30 text-small font-bold text-ink-soft uppercase tracking-wider">
                 <th className="py-4 px-6 text-start">Table</th>
                 <th className="py-4 px-6 text-start">Zone</th>
+                <th className="py-4 px-6 text-start">Assigned Waiter</th>
                 <th className="py-4 px-6 text-start">Tag version</th>
                 <th className="py-4 px-6 text-end">Actions</th>
               </tr>
@@ -294,6 +320,9 @@ export default function AdminTables() {
                   <tr key={table.id} className="group hover:bg-surface-hover/50 transition-colors">
                     <td className="py-4 px-6 text-body font-bold text-ink group-hover:text-accent transition-colors">{table.label}</td>
                     <td className="py-4 px-6 text-small text-ink-soft">{table.zone ?? '—'}</td>
+                    <td className="py-4 px-6 text-small text-ink-soft">
+                      {waiters.find((w) => w.id === table.assignedWaiterId)?.name ?? '—'}
+                    </td>
                     <td className="py-4 px-6">
                       <span className="tnum rounded-full bg-surface-strong px-3 py-1 text-xs font-bold text-ink-soft ring-1 ring-border shadow-sm">
                         v{table.tokenVersion}

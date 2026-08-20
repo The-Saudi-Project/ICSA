@@ -56,6 +56,7 @@ export interface TableView {
   tokenRotatedAt: Date
   /** Present only when the stored token can still be decrypted. */
   url: string | null
+  assignedWaiterId: string | null
 }
 
 function toView(table: TableDoc): TableView {
@@ -71,6 +72,7 @@ function toView(table: TableDoc): TableView {
     // null means the key changed or the row is corrupt. The UI shows
     // "QR unavailable - rotate this table's token" rather than failing.
     url: token ? tableUrl(token) : null,
+    assignedWaiterId: table.assignedWaiterId ? table.assignedWaiterId.toString() : null,
   }
 }
 
@@ -112,7 +114,7 @@ export async function createTable(input: {
 
 export async function updateTable(
   id: string,
-  input: { label?: string; zone?: string; seats?: number; status?: string },
+  input: { label?: string; zone?: string; seats?: number; status?: string; assignedWaiterId?: string | null },
 ): Promise<TableView> {
   const repo = tenantRepo(TableModel)
 
