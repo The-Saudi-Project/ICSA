@@ -61,7 +61,7 @@ export default function MyOrders() {
                         order.status === 'CANCELLED' ? 'bg-status-danger/10 text-status-danger' : 
                         'bg-status-info/10 text-status-info'
                       }`}>
-                        {order.status === 'CASH_PENDING' ? 'Pay at Counter' : 
+                        {order.paymentStatus === 'CASH_PENDING' ? 'Pay at Counter' : 
                          order.status === 'COMPLETED' ? 'Completed' :
                          order.status === 'CANCELLED' ? 'Cancelled' :
                          order.status === 'REJECTED' ? 'Declined' :

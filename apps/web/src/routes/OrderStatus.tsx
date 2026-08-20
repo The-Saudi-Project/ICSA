@@ -73,8 +73,12 @@ const SETTLED = new Set<string>([
   Status.EXPIRED,
 ])
 
-function headline(status: string, t: (key: keyof Translations) => string): { title: string; detail: string; icon: string } {
-  switch (status) {
+function headline(order: any, t: (key: keyof Translations) => string): { title: string; detail: string; icon: string } {
+  if (order.paymentStatus === 'CASH_PENDING' && !SETTLED.has(order.status)) {
+    return { title: t('stateCashTitle'), detail: t('stateCashDetail'), icon: '💵' }
+  }
+  
+  switch (order.status) {
     case Status.PLACED:
       return { title: t('statePlacedTitle'), detail: t('statePlacedDetail'), icon: '🧾' }
     case Status.CASH_PENDING:
@@ -157,7 +161,7 @@ export default function OrderStatus() {
   })
 
   const orderData = data?.order
-  const { title, detail, icon } = orderData ? headline(orderData.status, t) : { title: '', detail: '', icon: '' }
+  const { title, detail, icon } = orderData ? headline(orderData, t) : { title: '', detail: '', icon: '' }
   const cancellable = orderData ? (orderData.status === Status.PLACED || orderData.status === Status.CASH_PENDING) : false
   
   const prevStatusRef = useRef(orderData?.status)
