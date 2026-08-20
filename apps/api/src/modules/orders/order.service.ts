@@ -21,7 +21,7 @@ import {
   type CreateOrderInput,
 } from '@rw/shared'
 import { createHash } from 'node:crypto'
-import { trusted } from 'mongoose'
+import { trusted, type Types } from 'mongoose'
 import { env } from '../../config/env.js'
 import { writeAudit } from '../../core/audit.js'
 import { getContext, requireContext } from '../../core/context.js'
@@ -338,7 +338,7 @@ export async function staffCreateOrder(
     const restaurant = await RestaurantModel.findById(restaurantId)
     if (!restaurant) throw notFound('Restaurant not found')
 
-    let table: { label?: string; assignedWaiterId?: any } | null = null
+    let table: { label?: string; assignedWaiterId?: Types.ObjectId | string | null } | null = null
     let sessionId: unknown = null
 
     if (input.tableId) {
