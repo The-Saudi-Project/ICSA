@@ -118,11 +118,8 @@ export default function Kitchen() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
-        const activeNode = document.activeElement?.nodeName
-        if (activeNode === 'INPUT' || activeNode === 'TEXTAREA' || activeNode === 'SELECT') {
-          return
-        }
-
+        if (e.target instanceof HTMLElement && e.target.closest('input,textarea,select')) return
+        
         // Find oldest active ticket that can be advanced
         const oldestActive = [...orders]
           .sort((a, b) => new Date(a.placedAt).getTime() - new Date(b.placedAt).getTime())
@@ -186,11 +183,11 @@ export default function Kitchen() {
              <div className="bg-surface-strong/80 backdrop-blur-md rounded-2xl px-6 py-3 border border-border/50 shadow-sm flex items-center gap-3 mr-4">
                 <span className="font-bold text-ink-soft text-sm tracking-wider uppercase">Wait Time</span>
                 {editingWaitTime ? (
-                   <div className="flex items-center gap-2">
-                     <input type="number" value={waitTimeInput} onChange={e => setWaitTimeInput(e.target.value)} className="w-16 bg-ground border border-border rounded px-2 py-1 font-bold text-ink text-center" min="0" max="120" />
-                     <button onClick={() => updateWait.mutate(Number(waitTimeInput))} className="text-status-success font-bold hover:underline ml-2">Save</button>
-                     <button onClick={() => setEditingWaitTime(false)} className="text-status-danger font-bold hover:underline ml-2">Cancel</button>
-                   </div>
+                   <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); updateWait.mutate(Number(waitTimeInput)); }}>
+                     <input autoFocus type="number" value={waitTimeInput} onChange={e => setWaitTimeInput(e.target.value)} className="w-16 bg-ground border border-border rounded px-2 py-1 font-bold text-ink text-center" min="0" max="120" />
+                     <button type="submit" className="text-status-success font-bold hover:underline ml-2">Save</button>
+                     <button type="button" onClick={() => setEditingWaitTime(false)} className="text-status-danger font-bold hover:underline ml-2">Cancel</button>
+                   </form>
                 ) : (
                    <button type="button" className="pressable flex items-center gap-2" onClick={() => setEditingWaitTime(true)}>
                       <span className="text-xl font-bold text-ink">{waitTimeQuery.data?.settings?.estimatedWaitMinutes ?? 15}m</span>

@@ -6,7 +6,7 @@ import { addToCart, cartCount, cartTotal, useCart } from '../lib/cart.js'
 import { getSession } from '../lib/session.js'
 import { Skeleton } from '../components/ui/Skeleton.js'
 import { Button } from '../components/ui/Button.js'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useI18n } from '../lib/i18n.js'
 import { usePullToRefresh } from '../hooks/usePullToRefresh.js'
 
@@ -32,6 +32,17 @@ export default function Menu() {
   })
 
   const [search, setSearch] = useState('')
+  const headerRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!headerRef.current) return
+    const observer = new ResizeObserver((entries) => {
+      const height = entries[0]?.borderBoxSize[0]?.blockSize ?? 0
+      if (height) document.documentElement.style.setProperty('--app-header-h', `${height}px`)
+    })
+    observer.observe(headerRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const count = cartCount(cart)
 
@@ -58,7 +69,7 @@ export default function Menu() {
       </div>
 
       {/* Premium Header */}
-      <header className="sticky top-0 z-20 bg-ground/80 backdrop-blur-xl border-b border-border shadow-sm">
+      <header ref={headerRef} className="sticky top-0 z-20 bg-ground/80 backdrop-blur-xl border-b border-border shadow-sm">
         <div className="mx-auto max-w-2xl px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-4">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -231,8 +242,11 @@ export default function Menu() {
 function Category({ category }: { category: MenuCategory }) {
   const { locale } = useI18n()
   return (
-    <section id={`category-${category.id}`} className="scroll-mt-[160px]">
-      <div className="sticky top-[150px] z-10 bg-ground/95 backdrop-blur-md py-3 -mx-4 px-4 border-b border-border shadow-sm">
+    <section id={`category-${category.id}`} style={{ scrollMarginTop: 'calc(var(--app-header-h, 160px) + 16px)' }}>
+      <div 
+        className="sticky z-10 bg-ground/95 backdrop-blur-md py-3 -mx-4 px-4 border-b border-border shadow-sm"
+        style={{ top: 'calc(var(--app-header-h, 150px) - 1px)' }}
+      >
         <h2 className="text-h3 font-bold text-ink">
           {category.name[locale] ?? category.name.en}
         </h2>

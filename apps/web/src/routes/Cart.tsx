@@ -4,6 +4,7 @@ import { SwipeableItem } from '../components/SwipeableItem.js'
 import { Price } from '../components/Price.js'
 import { ApiError, placeOrder } from '../lib/api.js'
 import { cartTotal, clearCart, lineTotal, setQuantity, toOrderLines, useCart, type CartLine } from '../lib/cart.js'
+import { getSession } from '../lib/session.js'
 import { useLongPress } from '../hooks/useLongPress.js'
 import { newIdempotencyKey } from '../lib/format.js'
 import { Button } from '../components/ui/Button.js'
@@ -12,6 +13,7 @@ import { Card } from '../components/ui/Card.js'
 import { useI18n } from '../lib/i18n.js'
 
 export default function Cart() {
+  const session = getSession()
   const cart = useCart()
   const navigate = useNavigate()
   const [note, setNote] = useState('')
@@ -102,7 +104,7 @@ export default function Cart() {
 
         <div className="fixed md:absolute bottom-0 inset-x-0 bg-ground/80 backdrop-blur-xl border-t border-border p-4 md:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] z-20">
           <div className="flex items-center justify-between mb-2 px-2 text-ink-soft text-small">
-            <span>{t('vatIncluded')}</span>
+            <span>{session?.restaurant?.settings?.pricesIncludeVat ? t('includesVat', session?.restaurant?.settings?.vatRatePercent ?? 0) : t('addedVat', session?.restaurant?.settings?.vatRatePercent ?? 0)}</span>
           </div>
           <div className="flex items-center justify-between mb-4 px-2">
             <span className="text-body font-medium text-ink-soft">{t('total')}</span>
@@ -121,7 +123,7 @@ export default function Cart() {
                type="button"
                disabled={placing}
                onClick={() => void submit()}
-               className="flex-[2] py-4 font-bold text-white bg-accent hover:bg-accent-wash rounded-xl shadow-lg transition-colors disabled:opacity-50 relative overflow-hidden"
+               className="flex-[2] py-4 font-bold text-white bg-accent hover:bg-accent-dim rounded-xl shadow-lg transition-colors disabled:opacity-50 relative overflow-hidden"
              >
                <span className="relative z-10 flex items-center justify-center gap-2">
                   {placing ? 'Placing Order...' : t('placeOrder')}
@@ -171,7 +173,7 @@ function CartItem({ line }: { line: CartLine }) {
               type="button"
               onClick={() => setQuantity(line.lineId, line.quantity - 1)}
               {...minusPress}
-              aria-label={line.quantity === 1 ? `Remove ${line.name}` : 'One fewer'}
+              aria-label={line.quantity === 1 ? `Remove ${line.name?.en ?? ''}` : 'One fewer'}
               className="pressable flex items-center justify-center h-10 w-10 text-body text-ink-soft hover:bg-surface hover:text-ink transition-colors"
             >
               {line.quantity === 1 ? (

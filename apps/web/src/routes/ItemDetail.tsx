@@ -111,44 +111,42 @@ export default function ItemDetail() {
 
   return (
     <div id="main" className="min-h-dvh bg-ground-sunken md:bg-ground md:p-6 transition-colors flex justify-center">
-      <div className={`w-full max-w-2xl md:rounded-[32px] md:overflow-hidden md:border md:border-border md:shadow-2xl bg-ground relative pb-32 transition-transform duration-500 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+      <div className={`w-full max-w-2xl md:rounded-[32px] md:overflow-hidden md:border md:border-border md:shadow-2xl bg-ground relative transition-transform duration-500 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`} style={{ paddingBottom: 'var(--action-bar-h)' }}>
         
-        {/* Header/Close Button */}
-        <div className="absolute top-4 left-4 z-20">
-          <button
-            type="button"
-            onClick={() => void navigate(-1)}
-            className="pressable flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-white border border-white/10 shadow-sm"
-            aria-label={t('backToMenu')}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-        </div>
+        {/* Back button layer */}
+      <div className="fixed top-[max(0.75rem,env(safe-area-inset-top))] left-4 z-20 pointer-events-none">
+        <button
+          onClick={() => navigate('/menu')}
+          className="pointer-events-auto h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-ground/80 backdrop-blur-xl border border-border flex items-center justify-center text-ink-soft hover:text-ink shadow-sm transition-colors pressable"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
 
-        {/* Hero Image */}
-        <div className="w-full aspect-[4/3] md:aspect-[16/9] bg-surface-strong relative overflow-hidden">
-          {item.imageUrl ? (
-            <img
-              src={item.imageUrl}
-              alt={item.name[locale] ?? item.name.en}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-             <div className="w-full h-full flex items-center justify-center text-ink-faint">
-                <svg className="w-16 h-16 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-             </div>
-          )}
-          {/* Gradient Overlay for blending */}
-          <div className="absolute inset-0 bg-gradient-to-t from-ground to-transparent opacity-80 h-full w-full pointer-events-none" />
-        </div>
+      <div className="mx-auto max-w-2xl px-4" style={{ paddingBottom: 'calc(var(--action-bar-h, 96px) + env(safe-area-inset-bottom) + 16px)' }}>
+        <div className="animate-slide-up-fade">
+          {/* Hero image (optional) */}
+          <div className="w-full aspect-[4/3] md:aspect-[16/9] bg-surface-strong relative overflow-hidden">
+            {item.imageUrl ? (
+              <img
+                src={item.imageUrl}
+                alt={item.name[locale] ?? item.name.en}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+               <div className="w-full h-full flex items-center justify-center text-ink-faint">
+                  <svg className="w-16 h-16 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+               </div>
+            )}
+            {/* Gradient Overlay for blending */}
+            <div className="absolute inset-0 bg-gradient-to-t from-ground to-transparent opacity-80 h-full w-full pointer-events-none" />
+          </div>
 
-        {/* Content Section (Sliding up naturally) */}
-        <div className="px-5 -mt-16 relative z-10 bg-ground rounded-t-3xl pt-8 pb-10">
-          <h1 className="text-h1 text-ink">{item.name[locale] ?? item.name.en}</h1>
+          {/* Content Section (Sliding up naturally) */}
+          <div className="px-5 -mt-16 relative z-10 bg-ground rounded-t-3xl pt-8 pb-10">
+            <h1 className="text-h1 text-ink">{item.name[locale] ?? item.name.en}</h1>
           
           {item.reviewCount ? (
             <div className="flex items-center gap-2 mt-2">
@@ -345,6 +343,8 @@ export default function ItemDetail() {
             </Button>
           </div>
         </div>
+      </div>
+      </div>
       </div>
     </div>
   )

@@ -15,6 +15,7 @@ import { Card } from '../../components/ui/Card.js'
 import { Button } from '../../components/ui/Button.js'
 import { Input } from '../../components/ui/Input.js'
 import { Price } from '../../components/Price.js'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js'
 import { Link } from 'react-router'
 
 export default function Platform() {
@@ -35,6 +36,8 @@ export default function Platform() {
   const [draft, setDraft] = useState({ name: '', slug: '', type: 'SINGLE', parentId: '', ownerEmail: '', ownerName: '' })
   const [secret, setSecret] = useState<{ label: string; value: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [suspendConfirm, setSuspendConfirm] = useState<PlatformRestaurant | null>(null)
+  const [resetConfirm, setResetConfirm] = useState<PlatformRestaurant | null>(null)
 
   const subtitle = activeTab === 'tenants' ? 'Manage your tenant ecosystem and monitor status.'
                  : activeTab === 'security' ? 'Audit logs, security alerts, and access controls.'
@@ -221,7 +224,7 @@ export default function Platform() {
                     <div className="p-4 bg-surface-hover/50 flex items-center justify-end gap-3 relative z-10">
                       <Button
                         variant="ghost"
-                        onClick={() => suspend.mutate(r)}
+                        onClick={() => setSuspendConfirm(r)}
                         disabled={suspend.isPending}
                         className={r.status === 'SUSPENDED' ? 'text-status-success' : 'text-status-warning'}
                       >
@@ -229,11 +232,7 @@ export default function Platform() {
                       </Button>
                       <Button
                         variant="ghost"
-                        onClick={() => {
-                          if (window.confirm(`Reset the owner password for ${r.name.en}?`)) {
-                            resetPassword.mutate(r.id)
-                          }
-                        }}
+                        onClick={() => setResetConfirm(r)}
                         disabled={resetPassword.isPending}
                         className="text-status-danger hover:bg-status-danger-wash"
                       >
@@ -397,7 +396,41 @@ export default function Platform() {
            </Card>
         </div>
       )}
-
+      <ConfirmDialog
+        isOpen={suspendConfirm !== null}
+        title={suspendConfirm?.status === 'SUSPENDED' ? 'Reactivate Tenant?' : 'Suspend Tenant?'}
+        message={
+          suspendConfirm?.status === 'SUSPENDED'
+            ? `Are you sure you want to reactivate ${suspendConfirm?.name.en}? This will immediately restore their access.`
+            : `Are you sure you want to suspend ${suspendConfirm?.name.en}? All active sessions will be terminated and they will not be able to log in.`
+        }
+        confirmText={suspendConfirm?.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
+        cancelText="Cancel"
+        destructive={suspendConfirm?.status !== 'SUSPENDED'}
+        requiredSlug={suspendConfirm?.status !== 'SUSPENDED' ? suspendConfirm?.slug : undefined}
+        onConfirm={() => {
+          if (suspendConfirm) {
+            suspend.mutate(suspendConfirm)
+            setSuspendConfirm(null)
+          }
+        }}
+        onCancel={() => setSuspendConfirm(null)}
+      />
+      <ConfirmDialog
+        isOpen={resetConfirm !== null}
+        title="Reset Password?"
+        message={`This will immediately invalidate the current owner session for ${resetConfirm?.name.en}. Are you sure you want to generate a new temporary password?`}
+        confirmText="Reset Password"
+        cancelText="Cancel"
+        destructive={true}
+        onConfirm={() => {
+          if (resetConfirm) {
+            resetPassword.mutate(resetConfirm.id)
+            setResetConfirm(null)
+          }
+        }}
+        onCancel={() => setResetConfirm(null)}
+      />
     </div>
   )
 }

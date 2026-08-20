@@ -178,7 +178,7 @@ export default function Waiter() {
                           <div className="flex gap-5">
                              <span className="tnum text-3xl font-black text-ink/80 mt-1">{line.quantity}</span>
                              <div className="min-w-0">
-                                <span className="text-2xl font-bold text-ink block">{line.nameSnapshot[locale] ?? line.nameSnapshot.en}</span>
+                                <span className="text-2xl font-bold text-ink block">{line.nameSnapshot[locale as keyof typeof line.nameSnapshot] ?? line.nameSnapshot.en}</span>
                              </div>
                           </div>
                         </li>

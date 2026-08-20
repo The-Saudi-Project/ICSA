@@ -57,9 +57,20 @@ export default function MyOrders() {
                     <div className="text-right">
                       <Price halalas={order.totals.grandTotalHalalas} className="text-h3 font-bold" />
                       <span className={`text-xs px-2 py-1 rounded-full font-bold mt-1 inline-block ${
-                        order.status === 'COMPLETED' ? 'bg-status-success/10 text-status-success' : 'bg-status-info/10 text-status-info'
+                        order.status === 'COMPLETED' ? 'bg-status-success/10 text-status-success' : 
+                        order.status === 'CANCELLED' ? 'bg-status-danger/10 text-status-danger' : 
+                        'bg-status-info/10 text-status-info'
                       }`}>
-                        {order.status.charAt(0) + order.status.slice(1).toLowerCase()}
+                        {order.status === 'CASH_PENDING' ? 'Pay at Counter' : 
+                         order.status === 'COMPLETED' ? 'Completed' :
+                         order.status === 'CANCELLED' ? 'Cancelled' :
+                         order.status === 'REJECTED' ? 'Declined' :
+                         order.status === 'READY' ? 'Ready' :
+                         order.status === 'PREPARING' ? 'Preparing' :
+                         order.status === 'ACCEPTED' ? 'Accepted' :
+                         order.status === 'CONFIRMED' ? 'Confirmed' :
+                         order.status === 'PLACED' ? 'Received' :
+                         order.status.charAt(0) + order.status.slice(1).toLowerCase()}
                       </span>
                     </div>
                   </div>

@@ -418,7 +418,7 @@ function OrderDetails({ order, compact = false }: { order: StaffOrder, compact?:
           </span>
         </div>
         <p className={`text-small text-ink-soft truncate ${compact ? 'mt-1' : 'mt-1.5'}`}>
-          {order.items.map((i) => `${i.quantity}x ${i.nameSnapshot[locale] ?? i.nameSnapshot.en}`).join(', ')}
+          {order.items.map((i) => `${i.quantity}x ${i.nameSnapshot[locale as keyof typeof i.nameSnapshot] ?? i.nameSnapshot.en}`).join(', ')}
         </p>
       </div>
     </div>
