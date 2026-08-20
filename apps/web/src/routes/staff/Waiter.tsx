@@ -149,15 +149,15 @@ export default function Waiter() {
                 >
                   <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
                   
-                  <div className="p-8 flex-1 flex flex-col relative z-10">
+                  <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col relative z-10">
                     <div className="flex items-start justify-between gap-4 border-b-2 border-border/50 pb-6 mb-6">
-                      <div>
-                        <span className="text-xs font-bold text-ink-faint uppercase tracking-widest block mb-2">Ticket</span>
-                        <span className="text-5xl font-black text-ink tracking-tighter drop-shadow-sm">{order.orderNumber}</span>
+                      <div className="pr-10 sm:pr-0">
+                        <span className="text-[10px] sm:text-xs font-bold text-ink-faint uppercase tracking-widest block mb-1 sm:mb-2">Ticket</span>
+                        <span className="text-4xl sm:text-5xl font-black text-ink tracking-tighter drop-shadow-sm">{order.orderNumber}</span>
                       </div>
                       <div className="text-right">
                         <span
-                          className="rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest border inline-block mb-3 shadow-sm"
+                          className="rounded-xl px-2.5 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-xs font-black uppercase tracking-widest border inline-block mb-2 sm:mb-3 shadow-sm"
                           style={{
                             background: `${tone.color}15`,
                             color: tone.color,
@@ -166,19 +166,19 @@ export default function Waiter() {
                         >
                           {tone.label}
                         </span>
-                        <p className={`mt-1.5 text-xl font-black text-ink tracking-tight`}>
+                        <p className={`mt-1 sm:mt-1.5 text-lg sm:text-xl font-black text-ink tracking-tight`}>
                           {order.tableLabel ? `Table ${order.tableLabel}` : 'Takeaway'}
                         </p>
                       </div>
                     </div>
 
-                    <ul className="space-y-6 flex-1">
+                    <ul className="space-y-4 sm:space-y-6 flex-1">
                       {order.items.map((line, index) => (
                         <li key={index} className="leading-snug">
-                          <div className="flex gap-5">
-                             <span className="tnum text-3xl font-black text-ink/80 mt-1">{line.quantity}</span>
+                          <div className="flex gap-3 sm:gap-5">
+                             <span className="tnum text-2xl sm:text-3xl font-black text-ink/80 mt-1">{line.quantity}</span>
                              <div className="min-w-0">
-                                <span className="text-2xl font-bold text-ink block">{line.nameSnapshot[locale as keyof typeof line.nameSnapshot] ?? line.nameSnapshot.en}</span>
+                                <span className="text-xl sm:text-2xl font-bold text-ink block">{line.nameSnapshot[locale as keyof typeof line.nameSnapshot] ?? line.nameSnapshot.en}</span>
                              </div>
                           </div>
                         </li>
@@ -190,7 +190,7 @@ export default function Waiter() {
                         type="button"
                         onClick={() => advance.mutate({ order, to: next })}
                         disabled={advance.isPending}
-                        className="mt-8 w-full h-14 sm:h-16 md:h-20 text-lg sm:text-xl md:text-2xl font-black text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all rounded-2xl border-none disabled:opacity-50 flex items-center justify-center gap-2 sm:gap-3"
+                        className="mt-6 sm:mt-8 w-full h-14 sm:h-16 md:h-20 text-base sm:text-xl font-black text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all rounded-2xl border-none disabled:opacity-50 flex items-center justify-center gap-2 sm:gap-3"
                         style={{ background: tone.color }}
                       >
                         {NEXT_LABEL[next] ?? next}

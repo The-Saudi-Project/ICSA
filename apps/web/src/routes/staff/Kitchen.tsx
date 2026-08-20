@@ -254,21 +254,21 @@ export default function Kitchen() {
                 >
                   <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
                   
-                    <div className="p-8 flex-1 flex flex-col relative z-10">
+                    <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col relative z-10">
                       {order.isRush && (
                         <div className="absolute top-0 left-0 w-full h-1 bg-status-danger shadow-[0_0_10px_var(--color-status-danger)] pointer-events-none"></div>
                       )}
                       <div className="flex items-start justify-between gap-4 border-b-2 border-border/50 pb-6 mb-6 relative">
                         <button
                           onClick={() => toggleRush.mutate({ order, isRush: !order.isRush })}
-                          className={`absolute -top-4 -right-4 p-2 rounded-full border shadow-sm transition-colors ${order.isRush ? 'bg-status-danger text-white border-status-danger' : 'bg-surface hover:bg-surface-strong border-border text-ink-faint hover:text-ink'}`}
+                          className={`absolute -top-2 -right-2 sm:-top-4 sm:-right-4 p-2 rounded-full border shadow-sm transition-colors z-20 ${order.isRush ? 'bg-status-danger text-white border-status-danger' : 'bg-surface hover:bg-surface-strong border-border text-ink-faint hover:text-ink'}`}
                           title="Toggle Rush"
                         >
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
                         </button>
-                      <div>
-                        <span className="text-xs font-bold text-ink-faint uppercase tracking-widest block mb-2">Ticket</span>
-                        <span className={`text-5xl font-black tracking-tighter drop-shadow-sm ${order.isRush ? 'text-status-danger' : 'text-ink'}`}>{order.orderNumber}</span>
+                      <div className="pr-10 sm:pr-0">
+                        <span className="text-[10px] sm:text-xs font-bold text-ink-faint uppercase tracking-widest block mb-1 sm:mb-2">Ticket</span>
+                        <span className={`text-4xl sm:text-5xl font-black tracking-tighter drop-shadow-sm ${order.isRush ? 'text-status-danger' : 'text-ink'}`}>{order.orderNumber}</span>
                         {estPrepTime > 0 ? (
                           <div className="mt-2 text-sm font-bold text-ink-soft flex items-center gap-1">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -278,7 +278,7 @@ export default function Kitchen() {
                       </div>
                       <div className="text-right">
                         <span
-                          className="rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest border inline-flex items-center gap-1.5 mb-3 shadow-sm"
+                          className="rounded-xl px-2.5 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-xs font-black uppercase tracking-widest border inline-flex items-center gap-1 sm:gap-1.5 mb-2 sm:mb-3 shadow-sm"
                           style={{
                             background: `${tone.color}15`,
                             color: tone.color,
@@ -288,28 +288,28 @@ export default function Kitchen() {
                           <span>{tone.icon}</span>
                           <span>{tone.label}</span>
                         </span>
-                        <p className={`tnum text-3xl font-black ${waitingColor} tracking-tight`}>{waiting}m</p>
-                        <p className="mt-1.5 text-sm font-bold text-ink-soft">
+                        <p className={`tnum text-2xl sm:text-3xl font-black ${waitingColor} tracking-tight`}>{waiting}m</p>
+                        <p className="mt-1 sm:mt-1.5 text-xs sm:text-sm font-bold text-ink-soft">
                           {order.tableLabel ? `Table ${order.tableLabel}` : 'Takeaway'}
                         </p>
 
                       </div>
                     </div>
 
-                    <ul className="space-y-6 flex-1">
+                    <ul className="space-y-4 sm:space-y-6 flex-1">
                       {order.items.map((line, index) => (
                         <li key={index} className="leading-snug">
-                          <div className="flex gap-5">
-                             <span className="tnum text-3xl font-black text-ink/80 mt-1">{line.quantity}</span>
+                          <div className="flex gap-3 sm:gap-5">
+                             <span className="tnum text-2xl sm:text-3xl font-black text-ink/80 mt-1">{line.quantity}</span>
                              <div className="min-w-0">
-                                <span className="text-2xl font-bold text-ink block">{line.nameSnapshot[locale as keyof typeof line.nameSnapshot] ?? line.nameSnapshot.en}</span>
+                                <span className="text-xl sm:text-2xl font-bold text-ink block">{line.nameSnapshot[locale as keyof typeof line.nameSnapshot] ?? line.nameSnapshot.en}</span>
                                 {line.modifiers.length > 0 ? (
-                                  <span className="mt-2 block text-lg font-medium text-ink-soft">
+                                  <span className="mt-1.5 sm:mt-2 block text-base sm:text-lg font-medium text-ink-soft">
                                     {line.modifiers.map((m) => m.nameSnapshot[locale as keyof typeof m.nameSnapshot] ?? m.nameSnapshot.en).join(' • ')}
                                   </span>
                                 ) : null}
                                 {line.note ? (
-                                  <span className="mt-3 block text-lg text-status-warning font-bold italic bg-status-warning-wash/50 px-3 py-2 rounded-lg border border-status-warning/20">
+                                  <span className="mt-2 sm:mt-3 block text-base sm:text-lg text-status-warning font-bold italic bg-status-warning-wash/50 px-3 py-2 rounded-lg border border-status-warning/20">
                                     "{line.note}"
                                   </span>
                                 ) : null}
@@ -336,7 +336,7 @@ export default function Kitchen() {
                         type="button"
                         onClick={() => advance.mutate({ order, to: next })}
                         disabled={advance.isPending}
-                        className="mt-8 w-full h-14 sm:h-16 md:h-20 text-lg sm:text-xl md:text-2xl font-black text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all rounded-2xl border-none disabled:opacity-50 flex items-center justify-center gap-2 sm:gap-3"
+                        className="mt-6 sm:mt-8 w-full h-14 sm:h-16 md:h-20 text-base sm:text-xl font-black text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all rounded-2xl border-none disabled:opacity-50 flex items-center justify-center gap-2 sm:gap-3"
                         style={{ background: tone.color }}
                       >
                         {NEXT_LABEL[next] ?? next}

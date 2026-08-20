@@ -292,17 +292,19 @@ export default function Cashier() {
           <Section title="Needs Payment" color="var(--color-status-warning)" count={awaitingPayment.length} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M12 12h.01"></path><path d="M17 12h.01"></path><path d="M7 12h.01"></path></svg>}>
             <div className="grid gap-6 mt-6">
               {awaitingPayment.map((order) => (
-                <Card key={order.id} variant="glass" className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 overflow-hidden relative group">
-                  <div className="absolute inset-y-0 left-0 w-1.5 bg-status-warning shadow-[0_0_15px_var(--color-status-warning)]"></div>
+                <Card key={order.id} variant="glass" className="p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 overflow-hidden relative group shadow-lg border-t-[4px] border-t-status-warning bg-status-warning-wash/20">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-status-warning/5 pointer-events-none"></div>
                   <OrderDetails order={order} />
-                  <button
-                    type="button"
-                    onClick={() => setConfirmModalOrder(order)}
-                    className="w-full md:w-auto shrink-0 bg-gradient-to-br from-status-warning to-orange-500 hover:to-orange-600 text-white shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5 transition-all rounded-xl px-8 py-4 font-bold flex items-center justify-center gap-3 disabled:opacity-50 disabled:pointer-events-none"
-                  >
+                  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0 relative z-10">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmModalOrder(order)}
+                      className="w-full md:w-auto shrink-0 bg-gradient-to-br from-status-warning to-orange-500 hover:to-orange-600 text-white shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5 transition-all rounded-xl px-4 py-3 sm:px-8 sm:py-4 font-bold flex items-center justify-center gap-2 sm:gap-3 disabled:opacity-50 disabled:pointer-events-none"
+                    >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                     Confirm <Price halalas={order.totals.grandTotalHalalas} className="ml-1 opacity-90" />
                   </button>
+                  </div>
                 </Card>
               ))}
               {awaitingPayment.length === 0 && !isPending ? (
@@ -317,14 +319,14 @@ export default function Cashier() {
           <Section title="Ready for Handover" color="var(--color-status-success)" count={ready.length} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>}>
             <div className="grid gap-6 mt-6">
               {ready.map((order) => (
-                <Card key={order.id} variant="glass" className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 overflow-hidden relative group border-status-success/30 bg-status-success-wash/20">
+                <Card key={order.id} variant="glass" className="p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 overflow-hidden relative group border-status-success/30 bg-status-success-wash/20">
                   <div className="absolute inset-y-0 left-0 w-1.5 bg-status-success shadow-[0_0_15px_var(--color-status-success)]"></div>
                   <OrderDetails order={order} />
                   <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto shrink-0">
                     <button
                       type="button"
                       onClick={() => handlePrint(order)}
-                      className="bg-surface-strong border border-border text-ink hover:bg-surface-hover shadow-sm transition-all rounded-xl px-6 py-4 font-bold flex items-center justify-center gap-2"
+                      className="bg-surface-strong border border-border text-ink hover:bg-surface-hover shadow-sm transition-all rounded-xl px-4 py-3 sm:px-6 sm:py-4 font-bold flex items-center justify-center gap-2"
                     >
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                       Print
@@ -337,7 +339,7 @@ export default function Cashier() {
                         }
                       }}
                       disabled={refund.isPending}
-                      className="bg-status-danger-wash text-status-danger hover:bg-status-danger hover:text-white transition-colors rounded-xl px-4 py-4 font-bold flex items-center justify-center"
+                      className="bg-status-danger-wash text-status-danger hover:bg-status-danger hover:text-white transition-colors rounded-xl px-4 py-3 sm:py-4 font-bold flex items-center justify-center"
                       title="Refund Order"
                     >
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
@@ -357,7 +359,7 @@ export default function Cashier() {
           <Section title="In Progress (Kitchen)" color="var(--color-ink-faint)" count={inProgress.length} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>}>
             <div className="grid gap-6 mt-6 grid-cols-1 md:grid-cols-2">
               {inProgress.map((order) => (
-                <Card key={order.id} variant="glass" className="p-5 flex items-center justify-between gap-4 border-border/40 opacity-80 hover:opacity-100 transition-opacity">
+                <Card key={order.id} variant="glass" className="p-4 sm:p-5 flex items-center justify-between gap-3 sm:gap-4 border-border/40 opacity-80 hover:opacity-100 transition-opacity">
                   <OrderDetails order={order} compact />
                   <span className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider shadow-sm ${order.status === OrderStatus.PREPARING ? 'bg-accent-wash text-accent ring-1 ring-accent/30' : 'bg-surface-strong text-ink-soft ring-1 ring-border'}`}>
                     {order.status === OrderStatus.PREPARING ? 'Cooking' : 'Queued'}
