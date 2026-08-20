@@ -236,16 +236,27 @@ export async function tableQrCode(
   }
 }
 
+/**
+ * Renders one CSV cell: quotes/escapes for structure, and prefixes a leading
+ * `= + - @` (or a whitespace char some spreadsheets strip to expose one) with a
+ * single quote so a crafted table label cannot execute as a formula in Excel or
+ * Sheets.
+ */
+function csvCell(value: string): string {
+  const guarded = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  return `"${guarded.replace(/"/g, '""')}"`
+}
+
 /** CSV of every table URL, for writing to NFC chips in one sitting. */
 export async function exportTableUrls(): Promise<string> {
   const tables = await tenantRepo(TableModel).find({}, { sort: { label: 1 } })
 
   const rows = tables.map((t) => {
     const token = decryptSecret(t.tokenCipher)
-    // Quote and escape: a label such as `Table "A", window` would otherwise
-    // break the column structure.
-    const label = `"${t.label.replace(/"/g, '""')}"`
-    const zone = `"${(t.zone ?? '').replace(/"/g, '""')}"`
+    // Quote and escape (so `Table "A", window` keeps its column structure), and
+    // neutralise spreadsheet formula injection via csvCell.
+    const label = csvCell(t.label)
+    const zone = csvCell(t.zone ?? '')
     return [label, zone, t.status, t.tokenVersion, token ? tableUrl(token) : 'UNAVAILABLE'].join(
       ',',
     )

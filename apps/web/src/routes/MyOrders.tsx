@@ -22,6 +22,7 @@ export default function MyOrders() {
             type="button"
             onClick={() => void navigate('/menu')}
             className="pressable flex items-center justify-center size-10 rounded-full bg-surface border border-border text-ink-soft hover:text-ink shadow-sm mr-4"
+            aria-label={t('goBack') ?? 'Go back'}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
@@ -31,7 +32,7 @@ export default function MyOrders() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-8">
+      <main id="main" className="mx-auto max-w-2xl px-4 py-8">
         {isPending ? (
           <p className="text-ink-soft">Loading your orders...</p>
         ) : isError ? (
@@ -58,7 +59,7 @@ export default function MyOrders() {
                       <span className={`text-xs px-2 py-1 rounded-full font-bold mt-1 inline-block ${
                         order.status === 'COMPLETED' ? 'bg-status-success/10 text-status-success' : 'bg-status-info/10 text-status-info'
                       }`}>
-                        {order.status}
+                        {order.status.charAt(0) + order.status.slice(1).toLowerCase()}
                       </span>
                     </div>
                   </div>

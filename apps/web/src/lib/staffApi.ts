@@ -42,6 +42,9 @@ export function subscribeToAuth(listener: () => void): () => void {
 
 export const getStaffUser = (): StaffUser | null => currentUser
 
+/** The in-memory staff access token, for the Socket.IO handshake. */
+export const getAccessToken = (): string | null => accessToken
+
 export class StaffApiError extends Error {
   constructor(
     readonly status: number,
@@ -153,7 +156,7 @@ export async function staffApi<T>(path: string, init: RequestInit = {}): Promise
   }
 }
 
-async function rawBlob(path: string): Promise<Blob> {
+export async function rawBlob(path: string): Promise<Blob> {
   const res = await fetch(`${BASE}${path}`, {
     credentials: 'include',
     headers: {
@@ -269,17 +272,24 @@ export const refundOrder = (id: string) =>
   })
 
 export const getSettings = () =>
-  staffApi<{ settings: { estimatedWaitMinutes?: number; vatRatePercent?: number; serviceChargePercent?: number; pricesIncludeVat?: boolean; kitchenStartsBeforePayment?: boolean } }>('/app/restaurants/settings')
+  staffApi<{ settings: { estimatedWaitMinutes?: number; vatRatePercent?: number; serviceChargePercent?: number; pricesIncludeVat?: boolean; kitchenStartsBeforePayment?: boolean; vatNumber?: string } }>('/app/restaurants/settings')
 
 export const updateSettings = (settings: unknown) =>
-  staffApi<{ settings: { estimatedWaitMinutes?: number; vatRatePercent?: number; serviceChargePercent?: number; pricesIncludeVat?: boolean; kitchenStartsBeforePayment?: boolean } }>('/app/restaurants/settings', {
+  staffApi<{ settings: { estimatedWaitMinutes?: number; vatRatePercent?: number; serviceChargePercent?: number; pricesIncludeVat?: boolean; kitchenStartsBeforePayment?: boolean; vatNumber?: string } }>('/app/restaurants/settings', {
     method: 'PATCH',
     body: JSON.stringify(settings)
   })
 
-export const downloadBackup = () => {
-  const base = import.meta.env.VITE_API_URL || ''
-  window.location.href = `${base}/api/v1/app/dashboard/backup`
+export const downloadBackup = async () => {
+  const blob = await rawBlob('/app/dashboard/backup')
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `backup-${new Date().toISOString().slice(0, 10)}.zip`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 export interface RestaurantStats {
@@ -617,11 +627,15 @@ export interface PlatformStats {
   totalRevenue: number
 }
 
-export const fetchHealth = () =>
-  staffApi<{ status: string; uptimeSeconds: number }>('/health', { method: 'GET' })
+export const fetchHealth = async () => {
+  const res = await fetch(`${BASE.replace('/api/v1', '')}/health`)
+  return res.json() as Promise<{ status: string; uptimeSeconds: number }>
+}
 
-export const fetchReady = () =>
-  staffApi<{ status: string; checks: { database: string } }>('/readyz', { method: 'GET' })
+export const fetchReady = async () => {
+  const res = await fetch(`${BASE.replace('/api/v1', '')}/readyz`)
+  return res.json() as Promise<{ status: string; checks: { database: string } }>
+}
 
 export const fetchPlatformStats = () =>
   staffApi<PlatformStats>('/platform/analytics')

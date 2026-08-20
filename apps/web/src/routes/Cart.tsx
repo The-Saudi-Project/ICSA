@@ -49,7 +49,7 @@ export default function Cart() {
     return (
       <div className="min-h-dvh bg-ground transition-colors">
         <Header />
-        <main className="mx-auto max-w-2xl px-4 pt-24 text-center flex flex-col items-center">
+        <main id="main" className="mx-auto max-w-2xl px-4 pt-24 text-center flex flex-col items-center">
           <div className="mb-8 relative w-48 h-48 drop-shadow-2xl">
             <img src="/images/empty_cart.png" alt="Empty Cart" className="w-full h-full object-contain animate-float" />
           </div>
@@ -73,7 +73,7 @@ export default function Cart() {
       <div className="w-full max-w-2xl bg-ground md:rounded-[32px] md:border md:border-border md:shadow-2xl relative min-h-[100dvh] md:min-h-0 flex flex-col">
         <Header />
 
-        <main className="flex-1 px-4 md:px-8 pb-40 animate-fade-in flex flex-col">
+        <main id="main" className="flex-1 px-4 md:px-8 pb-40 animate-fade-in flex flex-col">
           <div className="py-6 border-b border-border mb-6">
              <h1 className="text-h1 text-ink font-bold">{t('reviewOrder')}</h1>
              <p className="text-body text-ink-soft mt-1">{t('reviewOrderDesc')}</p>
@@ -101,6 +101,9 @@ export default function Cart() {
         </main>
 
         <div className="fixed md:absolute bottom-0 inset-x-0 bg-ground/80 backdrop-blur-xl border-t border-border p-4 md:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] z-20">
+          <div className="flex items-center justify-between mb-2 px-2 text-ink-soft text-small">
+            <span>{t('vatIncluded')}</span>
+          </div>
           <div className="flex items-center justify-between mb-4 px-2">
             <span className="text-body font-medium text-ink-soft">{t('total')}</span>
             <Price halalas={cartTotal(cart)} className="text-h2 font-black text-ink" />
@@ -196,14 +199,15 @@ function CartItem({ line }: { line: CartLine }) {
 
 function Header() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   return (
     <header className="sticky top-0 z-20 bg-ground/80 backdrop-blur-xl border-b border-border md:rounded-t-[32px]">
       <div className="flex items-center px-4 md:px-8 py-4">
         <button
           type="button"
           onClick={() => void navigate(-1)}
-          className="pressable flex items-center justify-center size-10 rounded-full bg-surface border border-border text-ink-soft hover:text-ink shadow-sm"
-          aria-label="Go back"
+          className="pressable flex items-center justify-center size-10 rounded-full bg-surface border border-border text-ink-soft hover:text-ink hover:bg-surface-hover shadow-sm transition-colors"
+          aria-label={t('goBack') ?? 'Go back'}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />

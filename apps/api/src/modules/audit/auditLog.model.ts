@@ -30,6 +30,8 @@ export const AuditAction = {
   ORDER_STATUS_CHANGED: 'ORDER_STATUS_CHANGED',
   /** Money changing hands. Recorded separately from a generic status change. */
   CASH_CONFIRMED: 'CASH_CONFIRMED',
+  /** Money going back. A payment reversal, recorded separately from a status change. */
+  ORDER_REFUNDED: 'ORDER_REFUNDED',
   MENU_CATEGORY_CREATED: 'MENU_CATEGORY_CREATED',
   MENU_CATEGORY_UPDATED: 'MENU_CATEGORY_UPDATED',
   MENU_CATEGORY_DELETED: 'MENU_CATEGORY_DELETED',
@@ -49,6 +51,12 @@ export const AuditAction = {
   RESTAURANT_UPDATED: 'RESTAURANT_UPDATED',
   RESTAURANT_SUSPENDED: 'RESTAURANT_SUSPENDED',
   RESTAURANT_REACTIVATED: 'RESTAURANT_REACTIVATED',
+  /**
+   * Restaurant settings changed. Money-relevant (VAT, service charge, VAT-
+   * inclusive pricing) and payment-posture-relevant (kitchen-before-payment),
+   * so it is recorded separately with before/after values.
+   */
+  RESTAURANT_SETTINGS_CHANGED: 'RESTAURANT_SETTINGS_CHANGED',
   /**
    * Retired 2026-08-11. Nothing writes it any more — removing a staff member is
    * a disable, so the audit trail keeps pointing at a real account. Kept in the

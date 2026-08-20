@@ -1,4 +1,5 @@
 import { notFound, conflict, badRequest } from '../../core/errors.js'
+import { getContext } from '../../core/context.js'
 import { requireTenantId, tenantRepo } from '../../core/tenant.js'
 import { OrderModel } from '../orders/order.model.js'
 import { OrderStatus } from '@rw/shared'
@@ -15,7 +16,16 @@ export async function createReview(input: {
 }) {
   requireTenantId()
 
-  const order = await tenantRepo(OrderModel).findOne({ publicId: input.orderPublicId })
+  // Scope to the caller's own table session: a customer may only review an order
+  // placed from their session, not any completed order in the restaurant whose
+  // public id they happen to learn.
+  const tableSessionId = getContext()?.tableSessionId
+  if (!tableSessionId) throw notFound('Order not found')
+
+  const order = await tenantRepo(OrderModel).findOne({
+    publicId: input.orderPublicId,
+    tableSessionId,
+  })
   if (!order) throw notFound('Order not found')
 
   if (order.status !== OrderStatus.COMPLETED) {

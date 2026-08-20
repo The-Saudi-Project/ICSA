@@ -129,7 +129,7 @@ export default function Menu() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 pb-32">
+      <main id="main" className="mx-auto max-w-2xl px-4 pb-32" style={{ paddingTop: 'var(--app-header-h, 0px)' }}>
         {isPending ? <MenuSkeleton /> : null}
 
         {isError ? (
@@ -161,20 +161,38 @@ export default function Menu() {
         ) : null}
 
         <div className="stagger mt-6 space-y-10">
-          {data?.categories.map((category) => {
-            const filteredItems = category.items.filter(item => {
-              const name = item.name[locale] ?? item.name.en;
-              const desc = item.description?.[locale] ?? item.description?.en;
-              return name.toLowerCase().includes(search.toLowerCase()) || 
-                     (desc && desc.toLowerCase().includes(search.toLowerCase()));
-            })
+          {(() => {
+            const visibleCategories = data?.categories.map((category) => {
+              const filteredItems = category.items.filter(item => {
+                const name = item.name[locale] ?? item.name.en;
+                const desc = item.description?.[locale] ?? item.description?.en;
+                return name.toLowerCase().includes(search.toLowerCase()) || 
+                       (desc && desc.toLowerCase().includes(search.toLowerCase()));
+              })
+              return { ...category, items: filteredItems }
+            }).filter(category => category.items.length > 0) ?? []
 
-            if (filteredItems.length === 0 && search) return null
+            if (visibleCategories.length === 0 && search && !isPending) {
+              return (
+                <div className="pt-12 text-center animate-fade-in">
+                  <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-surface-strong text-ink-soft">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  </div>
+                  <h2 className="text-h2">No results for "{search}"</h2>
+                  <p className="mt-2 text-body text-ink-soft">
+                    Try checking your spelling or using less specific terms.
+                  </p>
+                  <Button variant="secondary" onClick={() => setSearch('')} className="mt-6">
+                    Clear search
+                  </Button>
+                </div>
+              )
+            }
 
-            return (
-              <Category key={category.id} category={{...category, items: filteredItems}} />
-            )
-          })}
+            return visibleCategories.map(category => (
+              <Category key={category.id} category={category} />
+            ))
+          })()}
         </div>
 
         {/* Need Help Footer */}

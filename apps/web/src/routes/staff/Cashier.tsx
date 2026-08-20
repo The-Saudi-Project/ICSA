@@ -3,13 +3,14 @@ import { useEffect, useState, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Price } from '../../components/Price.js'
 import { minutesSince } from '../../lib/format.js'
-import { confirmCash, fetchBoard, fetchOrderHistory, getStaffUser, staffApi, type StaffOrder } from '../../lib/staffApi.js'
+import { confirmCash, fetchBoard, fetchOrderHistory, getStaffUser, getSettings, staffApi, type StaffOrder } from '../../lib/staffApi.js'
 import { Link } from 'react-router'
 import { Card } from '../../components/ui/Card.js'
 import { ReceiptPrint } from '../../components/ReceiptPrint.js'
 import { SoundToggle } from '../../components/SoundToggle.js'
 import { useRestaurantSocket } from '../../lib/socket.js'
 import { playAlertBeep } from '../../lib/audio.js'
+import { useI18n } from '../../lib/i18n.js'
 
 function OrderHistoryModal({ onClose, onPrint }: { onClose: () => void, onPrint: (order: StaffOrder) => void }) {
   const [dateStr, setDateStr] = useState<string>(() => new Date().toISOString().slice(0, 10))
@@ -100,6 +101,8 @@ export default function Cashier() {
     queryFn: () => fetchBoard('cashier'),
   })
 
+  const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: getSettings })
+
   const user = getStaffUser()
   const { socket, isConnected } = useRestaurantSocket(user?.restaurantId)
 
@@ -152,10 +155,10 @@ export default function Cashier() {
 
   return (
     <>
-      <ReceiptPrint ref={receiptRef} order={receiptOrder} />
+      <ReceiptPrint ref={receiptRef} order={receiptOrder} vatNumber={settingsQuery.data?.settings?.vatNumber} />
       <div className="max-w-6xl mx-auto pt-10 pb-20 animate-fade-in relative px-6 no-print">
         {confirmModalOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmModalOrder(null)}></div>
           <Card variant="glass" className="relative z-10 w-full max-w-md p-8 shadow-2xl bg-ground">
             <h2 className="text-2xl font-black text-ink mb-6">Confirm Cash Payment</h2>
@@ -205,9 +208,9 @@ export default function Cashier() {
                 {takePayment.isPending ? 'Confirming...' : 'Confirm Paid'}
               </button>
             </div>
-          </Card>
-        </div>
-      )}
+            </Card>
+          </div>
+        )}
 
       {/* Decorative Orbs */}
       <div className="absolute top-[0%] right-[10%] w-96 h-96 bg-gold/10 blur-[120px] rounded-full pointer-events-none mix-blend-screen" />
@@ -349,11 +352,14 @@ export default function Cashier() {
           </Section>
         </div>
       )}
+      </div>
 
       {showHistory && (
-        <OrderHistoryModal onClose={() => setShowHistory(false)} onPrint={handlePrint} />
+        <OrderHistoryModal 
+          onClose={() => setShowHistory(false)} 
+          onPrint={handlePrint}
+        />
       )}
-      </div>
     </>
   )
 }
@@ -394,6 +400,7 @@ function Section({
 }
 
 function OrderDetails({ order, compact = false }: { order: StaffOrder, compact?: boolean }) {
+  const { locale } = useI18n()
   return (
     <div className="min-w-0 flex-1 flex items-center gap-5">
       <div className="w-16 h-16 shrink-0 bg-surface-strong rounded-2xl shadow-inner border border-border/50 flex flex-col items-center justify-center relative overflow-hidden group-hover:bg-surface transition-colors">
@@ -411,7 +418,7 @@ function OrderDetails({ order, compact = false }: { order: StaffOrder, compact?:
           </span>
         </div>
         <p className={`text-small text-ink-soft truncate ${compact ? 'mt-1' : 'mt-1.5'}`}>
-          {order.items.map((i) => `${i.quantity}x ${i.nameSnapshot.en}`).join(', ')}
+          {order.items.map((i) => `${i.quantity}x ${i.nameSnapshot[locale] ?? i.nameSnapshot.en}`).join(', ')}
         </p>
       </div>
     </div>

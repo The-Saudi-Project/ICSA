@@ -87,7 +87,7 @@ menuRouter.get(
   },
 )
 
-const searchSchema = z.object({ q: z.string().min(1) })
+const searchSchema = z.object({ q: z.string().min(1).max(200) })
 
 menuRouter.get(
   '/items/search',

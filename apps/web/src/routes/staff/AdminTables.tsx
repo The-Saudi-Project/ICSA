@@ -11,6 +11,7 @@ import {
   fetchTables,
   rotateTableToken,
   updateTable,
+  rawBlob,
   type AdminTable,
 } from '../../lib/staffApi.js'
 import { Card } from '../../components/ui/Card.js'
@@ -241,13 +242,27 @@ export default function AdminTables() {
       <AdminSection
         title="Tables"
         action={
-          <a
-            href={import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1/app/tables/export` : '/api/v1/app/tables/export'}
-            className="pressable text-small font-bold text-accent hover:text-accent-dim hover:underline flex items-center gap-2 bg-accent-wash px-4 py-2 rounded-xl transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Export CSV
-          </a>
+            <button
+              onClick={async () => {
+                try {
+                  const blob = await rawBlob('/app/tables/export')
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `tables-${new Date().toISOString().slice(0, 10)}.csv`
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  URL.revokeObjectURL(url)
+                } catch {
+                  alert('Failed to download CSV')
+                }
+              }}
+              className="pressable text-small font-bold text-accent hover:text-accent-dim hover:underline flex items-center gap-2 bg-accent-wash px-4 py-2 rounded-xl transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Export CSV
+            </button>
         }
       >
         {isPending ? <p className="py-6 text-body text-ink-soft">Loading…</p> : null}

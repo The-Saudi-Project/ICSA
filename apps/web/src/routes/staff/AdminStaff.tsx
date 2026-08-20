@@ -14,6 +14,7 @@ import {
   type AdminStaffMember,
 } from '../../lib/staffApi.js'
 import { Card } from '../../components/ui/Card.js'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js'
 import {
   AdminSection,
   Field,
@@ -52,6 +53,7 @@ export default function AdminStaff() {
   const [secret, setSecret] = useState<{ label: string; value: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedStaff, setSelectedStaff] = useState<AdminStaffMember | null>(null)
+  const [confirmReset, setConfirmReset] = useState<AdminStaffMember | null>(null)
 
   const add = useMutation({
     mutationFn: () =>
@@ -158,6 +160,16 @@ export default function AdminStaff() {
       </AdminSection>
 
       <AdminSection title="Team">
+        {secret ? (
+          <div className="mb-6 animate-slide-down">
+            <OneTimeSecret
+              label={secret.label}
+              value={secret.value}
+              onDone={() => setSecret(null)}
+            />
+          </div>
+        ) : null}
+
         {isPending ? <p className="py-6 text-body text-ink-soft">Loading…</p> : null}
 
         <Card variant="glass" className="hidden md:block overflow-hidden border-border/40 p-0">
@@ -206,7 +218,7 @@ export default function AdminStaff() {
                       <div className="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity flex-nowrap">
                         <button
                           type="button"
-                          onClick={() => reset.mutate(person)}
+                          onClick={() => setConfirmReset(person)}
                           disabled={reset.isPending || disabled}
                           className={`${quietButtonClass} !py-1.5 shrink-0`}
                         >
@@ -303,7 +315,7 @@ export default function AdminStaff() {
               <button
                 type="button"
                 onClick={() => {
-                  reset.mutate(selectedStaff)
+                  setConfirmReset(selectedStaff)
                   setSelectedStaff(null)
                 }}
                 disabled={reset.isPending || selectedStaff.status === 'DISABLED'}
@@ -334,6 +346,19 @@ export default function AdminStaff() {
           </div>
         </div>
       )}
+      {/* Action Modals */}
+      <ConfirmDialog
+        isOpen={!!confirmReset}
+        title="Reset Password?"
+        message={confirmReset ? `This will invalidate the current password for ${confirmReset.name}. They will need to use a new one-time password to log in.` : ''}
+        confirmText="Reset Password"
+        onConfirm={() => {
+          if (confirmReset) reset.mutate(confirmReset)
+          setConfirmReset(null)
+        }}
+        onCancel={() => setConfirmReset(null)}
+        destructive
+      />
     </div>
   )
 }

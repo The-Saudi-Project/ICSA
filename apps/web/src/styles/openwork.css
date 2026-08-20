@@ -66,6 +66,10 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
+.theme-light .openwork-stack > .openwork:first-child {
+  background: var(--color-border);
+}
+
 .openwork-stack > .openwork-lit {
   position: absolute;
   inset: 0;
@@ -73,7 +77,7 @@
   border-radius: 2px;
   opacity: 1;
   clip-path: inset(0 calc(100% - var(--ow-reach, 0%)) 0 0);
-  transition: clip-path 600ms var(--ease-out-strong);
+  transition: clip-path 600ms var(--ease-emphasis, var(--ease-out-strong, cubic-bezier(0.34, 1.56, 0.64, 1)));
   background: linear-gradient(
     90deg,
     currentColor 0%,
@@ -100,7 +104,7 @@
 }
 
 .ow-sweep {
-  animation: ow-sweep 800ms var(--ease-out-strong) forwards;
+  animation: ow-sweep 800ms var(--ease-emphasis, var(--ease-out-strong, cubic-bezier(0.34, 1.56, 0.64, 1))) forwards;
 }
 
 @keyframes ow-rise {
@@ -118,7 +122,7 @@
 
 .ow-rise {
   opacity: 0;
-  animation: ow-rise 500ms var(--ease-out-strong) forwards;
+  animation: ow-rise 500ms var(--ease-emphasis, var(--ease-out-strong, cubic-bezier(0.34, 1.56, 0.64, 1))) forwards;
 }
 .ow-rise-1 {
   animation-delay: 300ms;

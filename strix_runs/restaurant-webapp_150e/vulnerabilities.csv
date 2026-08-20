@@ -1,0 +1,4 @@
+id,title,severity,timestamp,file
+vuln-0001,Sensitive Credentials Stored in Plaintext `.env` File,CRITICAL,2026-08-19 10:18:02 UTC,vulnerabilities/vuln-0001.md
+vuln-0002,Missing Maximum Length Constraint on Menu Item Search Query Parameter,MEDIUM,2026-08-19 10:18:47 UTC,vulnerabilities/vuln-0002.md
+vuln-0003,Missing `REFUNDED` Guard in `confirmCashPayment` Allows Payment Status Manipulation After Refund,MEDIUM,2026-08-19 10:22:08 UTC,vulnerabilities/vuln-0003.md

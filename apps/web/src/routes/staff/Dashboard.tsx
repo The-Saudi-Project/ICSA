@@ -5,6 +5,7 @@ import { formatHalalas } from '@rw/shared'
 import { Card } from '../../components/ui/Card.js'
 import { Skeleton } from '../../components/ui/Skeleton.js'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { Price } from '../../components/Price.js'
 
 export default function Dashboard() {
   const stats = useQuery({ queryKey: ['dashboard', 'stats'], queryFn: fetchRestaurantStats })
@@ -73,7 +74,9 @@ export default function Dashboard() {
                 </div>
               </div>
               <div>
-                <span className="text-3xl text-ink font-extrabold tracking-tight">{formatHalalas(stats.data.todayRevenueHalalas)}</span>
+                <span className="text-3xl text-ink font-extrabold tracking-tight">
+                  <Price halalas={stats.data.todayRevenueHalalas} />
+                </span>
               </div>
             </Card>
 
@@ -145,11 +148,11 @@ export default function Dashboard() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-strong)" />
                 <XAxis dataKey="date" stroke="var(--color-ink-faint)" tick={{ fill: 'var(--color-ink-faint)' }} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--color-ink-faint)" tick={{ fill: 'var(--color-ink-faint)' }} tickLine={false} axisLine={false} width={80} tickFormatter={(value) => `SAR ${value}`} />
+                <YAxis stroke="var(--color-ink-faint)" tick={{ fill: 'var(--color-ink-faint)' }} tickLine={false} axisLine={false} width={80} tickFormatter={(value) => formatHalalas(value * 100)} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: 'var(--color-surface-strong)', borderRadius: '12px', border: '1px solid var(--color-border)' }}
                   itemStyle={{ color: 'var(--color-ink)' }}
-                  formatter={(value) => [`SAR ${(value as number).toFixed(2)}`, 'Revenue']}
+                  formatter={(value) => [formatHalalas((value as number) * 100), 'Revenue']}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="var(--color-accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
               </AreaChart>

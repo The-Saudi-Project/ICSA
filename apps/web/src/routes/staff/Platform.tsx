@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useLocation } from 'react-router'
 import {
   createRestaurant,
   fetchAudit,
@@ -14,6 +14,8 @@ import { relativeTime } from '../../lib/format.js'
 import { Card } from '../../components/ui/Card.js'
 import { Button } from '../../components/ui/Button.js'
 import { Input } from '../../components/ui/Input.js'
+import { Price } from '../../components/Price.js'
+import { Link } from 'react-router'
 
 export default function Platform() {
   const queryClient = useQueryClient()
@@ -24,7 +26,6 @@ export default function Platform() {
   const audit = useQuery({ queryKey: ['platform', 'audit'], queryFn: fetchAudit })
 
   const location = useLocation()
-  const navigate = useNavigate()
   const activeTab = location.pathname.endsWith('/tenants') ? 'tenants' 
                   : location.pathname.endsWith('/security') ? 'security' 
                   : 'overview'
@@ -34,6 +35,10 @@ export default function Platform() {
   const [draft, setDraft] = useState({ name: '', slug: '', type: 'SINGLE', parentId: '', ownerEmail: '', ownerName: '' })
   const [secret, setSecret] = useState<{ label: string; value: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const subtitle = activeTab === 'tenants' ? 'Manage your tenant ecosystem and monitor status.'
+                 : activeTab === 'security' ? 'Audit logs, security alerts, and access controls.'
+                 : 'Manage tenants, view platform metrics, and monitor activity.'
 
   const chainMains = restaurants.data?.restaurants.filter((r) => r.type === 'CHAIN_MAIN') ?? []
   
@@ -92,7 +97,7 @@ export default function Platform() {
             <h1 className="text-display font-black text-ink tracking-tight drop-shadow-sm">
               {activeTab === 'tenants' ? 'Tenant Directory' : activeTab === 'security' ? 'Security & Audit' : 'Platform Console'}
             </h1>
-            <p className="text-lead text-ink-soft mt-1">Manage tenants, view platform metrics, and monitor activity.</p>
+            <p className="text-lead text-ink-soft mt-1">{subtitle}</p>
           </div>
           
           {activeTab === 'tenants' && (
@@ -121,8 +126,9 @@ export default function Platform() {
               {stats.isPending ? (
                 <p className="text-ink-soft">Loading stats...</p>
               ) : stats.error ? (
-                <Card variant="glass" className="p-4 border-status-danger bg-status-danger-wash text-status-danger">
-                  Failed to load platform stats.
+                <Card variant="glass" className="p-4 border-status-danger bg-status-danger-wash text-status-danger flex items-center justify-between">
+                  <span>Failed to load platform stats.</span>
+                  <Button variant="secondary" onClick={() => stats.refetch()} className="text-status-danger border-status-danger/30 hover:bg-status-danger/10">Retry</Button>
                 </Card>
               ) : (
                 <div className="grid gap-6 sm:grid-cols-4 stagger">
@@ -147,7 +153,9 @@ export default function Platform() {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                       Total Revenue
                     </span>
-                    <span className="text-display text-status-success font-black mt-2 block relative z-10">SAR {stats.data.totalRevenue.toFixed(2)}</span>
+                    <div className="mt-2 block relative z-10 text-status-success font-black">
+                      <Price halalas={stats.data.totalRevenue * 100} size="title" className="text-display" />
+                    </div>
                   </Card>
                   <Card variant="glass" className="p-6">
                     <span className="text-small font-bold text-ink-soft uppercase tracking-wider flex items-center gap-2">
@@ -185,9 +193,9 @@ export default function Platform() {
                   <Card key={r.id} variant="glass" className="p-0 overflow-hidden flex flex-col relative group">
                     <div className="absolute inset-0 bg-gradient-to-b from-surface-hover to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                     
-                    <div 
-                       className="p-6 flex-1 relative z-10 border-b border-border/50 cursor-pointer hover:bg-surface-hover/30 transition-colors"
-                       onClick={() => navigate(`/platform/tenants/${r.id}`)}
+                    <Link 
+                       to={`/platform/tenants/${r.id}`}
+                       className="p-6 flex-1 relative z-10 border-b border-border/50 cursor-pointer hover:bg-surface-hover/30 transition-colors block"
                     >
                       <div className="flex items-start justify-between gap-4 mb-2">
                          <div>
@@ -208,7 +216,7 @@ export default function Platform() {
                             {r.staffCount} Staff
                          </span>
                       </div>
-                    </div>
+                    </Link>
                     
                     <div className="p-4 bg-surface-hover/50 flex items-center justify-end gap-3 relative z-10">
                       <Button
@@ -284,15 +292,17 @@ export default function Platform() {
       {showProvisionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
            {/* Backdrop */}
-           <div className="absolute inset-0 bg-ground/80 backdrop-blur-sm animate-fade-in" onClick={() => setShowProvisionModal(false)}></div>
+           <div className="absolute inset-0 bg-ground/80 backdrop-blur-sm animate-fade-in" onClick={secret ? undefined : () => setShowProvisionModal(false)}></div>
            
            {/* Modal Dialog */}
            <Card variant="glass" className="relative z-10 w-full max-w-lg p-8 shadow-2xl animate-slide-up border-border-strong">
               <div className="flex items-center justify-between mb-6">
                  <h2 className="text-h2 font-black tracking-tight text-ink">Provision Tenant</h2>
-                 <button onClick={() => setShowProvisionModal(false)} className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink transition-colors">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                 </button>
+                 {!secret && (
+                   <button onClick={() => setShowProvisionModal(false)} className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink transition-colors">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                   </button>
+                 )}
               </div>
 
               <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">

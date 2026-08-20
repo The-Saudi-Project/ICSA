@@ -7,6 +7,8 @@ import { Card } from '../../components/ui/Card.js'
 import { SoundToggle } from '../../components/SoundToggle.js'
 import { useRestaurantSocket } from '../../lib/socket.js'
 import { playNewOrderChime } from '../../lib/audio.js'
+import { useToast } from '../../components/ToastContext.js'
+import { useI18n } from '../../lib/i18n.js'
 
 function useMinuteTick() {
   const [, setTick] = useState(0)
@@ -31,6 +33,8 @@ function toneFor(status: string) {
 export default function Kitchen() {
   useMinuteTick()
   const queryClient = useQueryClient()
+  const { showToast } = useToast()
+  const { locale } = useI18n()
 
   const { data, isPending, isError } = useQuery({
     queryKey: ['board', 'kitchen'],
@@ -106,11 +110,19 @@ export default function Kitchen() {
     mutationFn: ({ order, to }: { order: StaffOrder; to: OrderStatus }) =>
       transitionOrder(order.id, to, order.status),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['board', 'kitchen'] }),
+    onError: (error) => {
+      showToast(error instanceof Error ? error.message : 'Failed to transition order', 'error')
+    }
   })
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
+        const activeNode = document.activeElement?.nodeName
+        if (activeNode === 'INPUT' || activeNode === 'TEXTAREA' || activeNode === 'SELECT') {
+          return
+        }
+
         // Find oldest active ticket that can be advanced
         const oldestActive = [...orders]
           .sort((a, b) => new Date(a.placedAt).getTime() - new Date(b.placedAt).getTime())
@@ -180,10 +192,10 @@ export default function Kitchen() {
                      <button onClick={() => setEditingWaitTime(false)} className="text-status-danger font-bold hover:underline ml-2">Cancel</button>
                    </div>
                 ) : (
-                   <div className="flex items-center gap-2 cursor-pointer" onClick={() => setEditingWaitTime(true)}>
+                   <button type="button" className="pressable flex items-center gap-2" onClick={() => setEditingWaitTime(true)}>
                       <span className="text-xl font-bold text-ink">{waitTimeQuery.data?.settings?.estimatedWaitMinutes ?? 15}m</span>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-faint hover:text-ink"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                   </div>
+                   </button>
                 )}
              </div>
              
@@ -293,10 +305,10 @@ export default function Kitchen() {
                           <div className="flex gap-5">
                              <span className="tnum text-3xl font-black text-ink/80 mt-1">{line.quantity}</span>
                              <div className="min-w-0">
-                                <span className="text-2xl font-bold text-ink block">{line.nameSnapshot.en}</span>
+                                <span className="text-2xl font-bold text-ink block">{line.nameSnapshot[locale as keyof typeof line.nameSnapshot] ?? line.nameSnapshot.en}</span>
                                 {line.modifiers.length > 0 ? (
                                   <span className="mt-2 block text-lg font-medium text-ink-soft">
-                                    {line.modifiers.map((m) => m.nameSnapshot.en).join(' • ')}
+                                    {line.modifiers.map((m) => m.nameSnapshot[locale as keyof typeof m.nameSnapshot] ?? m.nameSnapshot.en).join(' • ')}
                                   </span>
                                 ) : null}
                                 {line.note ? (

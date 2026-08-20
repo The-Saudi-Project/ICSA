@@ -41,6 +41,27 @@ Phases: **0** discovery ✅ → **1** core ordering MVP → **2** payments + OTP
 
 ---
 
+## 2b. Security audit remediation (2026-08-19)
+
+A code-level security audit ran against the documented invariants; see
+`SECURITY_AUDIT_2026-08-19.md`. The core model (tenant isolation, server-side pricing,
+table tokens, auth) held up. Eight edge findings were fixed the same day and verified with
+typecheck, lint, `test:security` (206 pass) and the full suite:
+
+- **H1** restaurant-settings PATCH is now owner/manager-only and audited (`RESTAURANT_SETTINGS_CHANGED`).
+- **H2** Socket.IO now authenticates the handshake (staff/table token) and derives the room from the
+  verified identity, not from the client's `join_restaurant`/`join_order` argument.
+- **M1** refund is now a concurrency-safe payment reversal that no longer changes order status or
+  bypasses the state machine (audited `ORDER_REFUNDED`). *Behavioural change:* refund reverses
+  payment only; cancelling a live order is a separate transition.
+- **M2** refund/rush now resolve the order by ObjectId (matching the route + UI); both endpoints
+  were previously dead.
+- **L1** reviews are scoped to the caller's table session; **L2** public order-list query is Zod-
+  validated/clamped; **L3** table-CSV export neutralises formula injection; **I1** staff-create now
+  requires an idempotency key.
+
+---
+
 ## 3. Current Status
 
 **Phase 1 is complete** — backend (Steps 1–6), all five frontend surfaces (Step 7), and hardening

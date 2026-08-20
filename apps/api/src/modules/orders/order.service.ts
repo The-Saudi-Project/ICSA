@@ -330,7 +330,11 @@ export async function staffCreateOrder(
     let sessionId: unknown = null
 
     if (input.tableId) {
-      table = await TableModel.findOne({ _id: input.tableId }).setOptions({ unscoped: true })
+      // Tenant-scoped: a tableId belonging to another restaurant resolves to
+      // null → 404, so a staffer cannot stamp a foreign table's label onto their
+      // own order. (The customer path reads tableId from the verified session,
+      // never from the body, so it is safe to be unscoped there.)
+      table = await tenantRepo(TableModel).findById(input.tableId)
       if (!table) throw notFound('Table not found')
       
       // Look for an active session to attach it to, so customers see it.
@@ -635,6 +639,9 @@ export async function confirmCashPayment(id: string): Promise<OrderView> {
     // truth rather than double-recording a payment.
     throw conflict('This order is already paid')
   }
+  if (order.paymentStatus === PaymentStatus.REFUNDED) {
+    throw conflict('This order has been refunded and cannot be re-confirmed as paid')
+  }
 
   // If the order was held waiting for cash, transition it forward.
   if (order.status === OrderStatus.CASH_PENDING) {
@@ -652,6 +659,18 @@ export async function confirmCashPayment(id: string): Promise<OrderView> {
   if (!updated) {
     throw conflict('This order was changed by someone else. Refresh and try again.')
   }
+
+  // Record the cash payment in the audit log — this branch previously had no
+  // audit entry, making legitimate first-time cash confirmations invisible.
+  await writeAudit({
+    action: AuditAction.CASH_CONFIRMED,
+    targetType: 'Order',
+    targetId: updated._id.toString(),
+    metadata: {
+      orderNumber: updated.orderNumber,
+      grandTotalHalalas: updated.totals?.grandTotalHalalas,
+    },
+  })
   
   try {
     const { getIO } = await import('../../core/socket.js')
@@ -702,10 +721,11 @@ export async function cancelOwnOrder(publicId: string): Promise<CustomerOrderVie
   return customerSafe
 }
 
-export async function toggleRush(publicId: string, isRush: boolean) {
+/** `id` is the order's ObjectId, matching the route param and the staff UI. */
+export async function toggleRush(id: string, isRush: boolean) {
   const tenantId = requireTenantId()
-  const updated = await tenantRepo(OrderModel).findOneAndUpdate(
-    { publicId },
+  const updated = await tenantRepo(OrderModel).findByIdAndUpdate(
+    id,
     { $set: { isRush } },
     { new: true }
   )
@@ -721,40 +741,64 @@ export async function toggleRush(publicId: string, isRush: boolean) {
   return toOrderView(updated)
 }
 
-export async function refundOrder(publicId: string) {
+/**
+ * Refund — a payment reversal.
+ *
+ * `id` is the order's ObjectId. This records the payment going back
+ * (`paymentStatus -> REFUNDED`) and does **not** touch the order status: the
+ * order state machine owns status, and a terminal order (COMPLETED, etc.) must
+ * stay uneditable. If staff also want to cancel a still-live order, that is a
+ * separate transition. The update is conditional on the current `PAID` status
+ * so two clicks cannot both refund, and the reversal is audited.
+ */
+export async function refundOrder(id: string) {
   const tenantId = requireTenantId()
-  const order = await tenantRepo(OrderModel).findOne({ publicId })
+  const context = getContext()
+  const order = await tenantRepo(OrderModel).findById(id)
   if (!order) throw notFound('Order not found')
 
   if (order.paymentStatus !== PaymentStatus.PAID) {
     throw badRequest('Order is not paid, cannot refund')
   }
 
+  const now = new Date()
   const updated = await tenantRepo(OrderModel).findOneAndUpdate(
-    { _id: order._id },
+    { _id: order._id, paymentStatus: PaymentStatus.PAID },
     {
-      $set: {
-        paymentStatus: PaymentStatus.REFUNDED,
-        status: OrderStatus.CANCELLED,
-        cancelledAt: new Date(),
-      },
+      $set: { paymentStatus: PaymentStatus.REFUNDED },
       $push: {
         statusHistory: {
           from: order.status,
-          to: OrderStatus.CANCELLED,
-          byUserId: getContext()?.actorUserId,
-          byRole: getContext()?.actorRole,
-          at: new Date(),
-          reason: 'Manual refund via staff API',
+          to: order.status,
+          byUserId: context?.actorUserId,
+          byRole: context?.actorRole,
+          at: now,
+          reason: 'Refund issued',
         },
       },
     },
     { new: true }
   )
 
-  if (!updated) throw notFound('Order not found')
+  if (!updated) throw conflict('This order was changed by someone else. Refresh and try again.')
 
-  getIO().to(`restaurant_${tenantId}`).emit('order_updated', { publicId: updated.publicId })
+  await writeAudit({
+    action: AuditAction.ORDER_REFUNDED,
+    targetType: 'Order',
+    targetId: order._id.toString(),
+    metadata: {
+      orderNumber: order.orderNumber,
+      grandTotalHalalas: order.totals?.grandTotalHalalas,
+      from: PaymentStatus.PAID,
+      to: PaymentStatus.REFUNDED,
+    },
+  })
+
+  try {
+    getIO().to(`restaurant_${tenantId}`).emit('order_updated', { publicId: updated.publicId })
+  } catch (err) {
+    logger.warn({ err }, 'failed to emit order_updated')
+  }
 
   return toOrderView(updated)
 }

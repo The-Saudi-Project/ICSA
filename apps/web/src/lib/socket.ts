@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
+import { getAccessToken } from './staffApi.js'
+import { getSession } from './session.js'
 
 let socketInstance: Socket | null = null
 
@@ -9,6 +11,13 @@ export function getSocket(): Socket {
     socketInstance = io(url, {
       autoConnect: false,
       withCredentials: true,
+      // The server authenticates every connection in the handshake and derives
+      // the room from the verified token. Staff present their access token;
+      // customers present their table-session token. Read as a function so the
+      // freshest token is used on every (re)connect.
+      auth: (cb: (data: { token: string }) => void) => {
+        cb({ token: getAccessToken() ?? getSession()?.sessionToken ?? '' })
+      },
     })
   }
   return socketInstance

@@ -265,13 +265,22 @@ export default function PlatformTenantDetail() {
                         className="w-full bg-surface-hover border border-border rounded-xl py-2.5 px-4 text-body text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-wash" 
                         value={restaurant?.subscription?.status ?? 'ACTIVE'}
                         onChange={(e) => {
-                          if (window.confirm(`Change subscription status to ${e.target.value}?`)) {
-                            updatePlatformSubscription(id!, { plan: restaurant?.subscription?.plan ?? 'FREE', status: e.target.value }).then(refresh)
+                          const newStatus = e.target.value
+                          if (newStatus === 'SUSPENDED') {
+                            const slugInput = window.prompt(`Are you sure you want to suspend this tenant? This will immediately disconnect all staff and stop new orders.\n\nType the tenant slug "${restaurant?.slug}" to confirm:`)
+                            if (slugInput !== restaurant?.slug) {
+                              alert('Confirmation failed. Status not changed.')
+                              return
+                            }
+                          } else {
+                            if (!window.confirm(`Change subscription status to ${newStatus}?`)) return
                           }
+                          updatePlatformSubscription(id!, { plan: restaurant?.subscription?.plan ?? 'FREE', status: newStatus }).then(refresh)
                         }}
                       >
                         <option value="ACTIVE">Active</option>
                         <option value="PAST_DUE">Past Due</option>
+                        <option value="SUSPENDED">Suspended</option>
                         <option value="CANCELED">Canceled</option>
                       </select>
                     </div>

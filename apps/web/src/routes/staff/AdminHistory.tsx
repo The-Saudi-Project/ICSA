@@ -7,8 +7,13 @@ import { formatHalalas } from '@rw/shared'
 import { OrderStatus } from '@rw/shared'
 import { Card } from '../../components/ui/Card.js'
 import { staffApi } from '../../lib/staffApi.js'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js'
+import { useToast } from '../../components/ToastContext.js'
 
-function OrderModal({ order, onClose }: { order: StaffOrder; onClose: () => void }) {
+function OrderModal({ order, onClose, onRefundSuccess }: { order: StaffOrder; onClose: () => void; onRefundSuccess: () => void }) {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+  const { showToast } = useToast()
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end md:items-center md:justify-center">
       <div className="absolute inset-0 bg-ground/80 backdrop-blur-sm animate-fade-in" onClick={onClose} />
@@ -29,20 +34,31 @@ function OrderModal({ order, onClose }: { order: StaffOrder; onClose: () => void
           <div className="flex items-center gap-3">
             {order.paymentStatus === 'PAID' && (
               <button
-                onClick={() => {
-                  if (window.confirm('Are you sure you want to refund this order?')) {
-                    staffApi<{ order: StaffOrder }>(`/app/orders/${order.id}/refund`, { method: 'POST' }).then(() => {
-                      onClose()
-                    }).catch(err => {
-                      alert(err.message)
-                    })
-                  }
-                }}
+                onClick={() => setIsConfirmOpen(true)}
                 className="px-4 py-2 bg-status-danger-wash text-status-danger hover:bg-status-danger hover:text-white transition-colors rounded-xl font-bold text-sm"
               >
                 Refund
               </button>
             )}
+            
+            <ConfirmDialog
+              isOpen={isConfirmOpen}
+              title="Refund Order"
+              message={`Are you sure you want to refund this order?`}
+              destructive
+              confirmText="Refund"
+              onConfirm={() => {
+                setIsConfirmOpen(false)
+                staffApi<{ order: StaffOrder }>(`/app/orders/${order.id}/refund`, { method: 'POST' }).then(() => {
+                  showToast('Order refunded', 'success')
+                  onRefundSuccess()
+                  onClose()
+                }).catch(err => {
+                  showToast(err.message, 'error')
+                })
+              }}
+              onCancel={() => setIsConfirmOpen(false)}
+            />
             <button onClick={onClose} className="w-10 h-10 rounded-full bg-surface-hover flex items-center justify-center text-ink-soft hover:text-ink shrink-0">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
@@ -304,7 +320,14 @@ export default function AdminHistory() {
       </Card>
 
       {selectedOrder && (
-        <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+        <OrderModal 
+          order={selectedOrder} 
+          onClose={() => setSelectedOrder(null)} 
+          onRefundSuccess={() => {
+            void queryClient.invalidateQueries({ queryKey: ['board', 'cashier'] })
+            void queryClient.invalidateQueries({ queryKey: ['orderHistory'] })
+          }}
+        />
       )}
     </div>
   )

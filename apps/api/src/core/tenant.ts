@@ -274,7 +274,14 @@ export function unscoped<TDoc>(model: Model<TDoc>): UnscopedRepo<TDoc> {
       return { deletedCount: result.deletedCount }
     },
     async aggregate<TResult = Record<string, unknown>>(pipeline: PipelineStage[]) {
-      return model.aggregate<TResult>(pipeline).exec()
+      // `.option({ unscoped: true })` so the tenant guard's `pre('aggregate')`
+      // hook skips this pipeline. Without it a platform aggregation whose first
+      // stage is not a tenant `$match` (e.g. platform-wide revenue) is rejected
+      // with a TenantScopeError — the 500 that broke the platform analytics.
+      return model
+        .aggregate<TResult>(pipeline)
+        .option({ unscoped: true } as Record<string, unknown>)
+        .exec()
     },
   }
 }

@@ -12,8 +12,10 @@ import { useI18n } from '../lib/i18n.js'
 import { useOrderSocket } from '../lib/socket.js'
 import { playSuccessChime, unlockAudio } from '../lib/audio.js'
 import type { Translations } from '../locales/en.js'
+import { useToast } from '../components/ToastContext.js'
 
 function ReviewModal({ itemId, orderPublicId, onClose }: { itemId: string; orderPublicId: string; onClose: () => void }) {
+  const { showToast } = useToast()
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
   const [customerName, setCustomerName] = useState('')
@@ -21,11 +23,11 @@ function ReviewModal({ itemId, orderPublicId, onClose }: { itemId: string; order
   const submit = useMutation({
     mutationFn: () => submitReview({ menuItemId: itemId, orderPublicId, rating, comment, customerName }),
     onSuccess: () => {
-      alert('Thanks for your review!')
+      showToast('Thanks for your review!', 'success')
       onClose()
     },
     onError: (e: Error) => {
-      alert(e.message || 'Error submitting review')
+      showToast(e.message || 'Error submitting review', 'error')
     }
   })
 
@@ -324,7 +326,7 @@ export default function OrderStatus() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-body font-medium text-ink">
-                      <span className="tnum font-bold text-accent mie-2">{line.quantity}&times;</span>
+                      <span className="tnum font-bold text-accent me-2">{line.quantity}&times;</span>
                       {line.nameSnapshot[locale] ?? line.nameSnapshot.en}
                     </p>
                     {line.modifiers.length > 0 ? (

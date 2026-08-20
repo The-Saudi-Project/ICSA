@@ -143,15 +143,24 @@ publicRouter.post(
   },
 )
 
-/** Only orders belonging to the session presenting the request. */
-publicRouter.get('/orders', requireTableSession, async (req: Request, res: Response) => {
-  res.setHeader('Cache-Control', 'no-store')
-  
-  const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20
-  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
-  
-  res.status(200).json({ orders: await orderService.listOrdersForSession({ limit, cursor }) })
+const listOrdersQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: z.string().datetime().optional(),
 })
+type ListOrdersQuery = z.infer<typeof listOrdersQuerySchema>
+
+/** Only orders belonging to the session presenting the request. */
+publicRouter.get(
+  '/orders',
+  requireTableSession,
+  validate({ query: listOrdersQuerySchema }),
+  async (req: Request & { validatedQuery?: ListOrdersQuery }, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store')
+
+    const { limit, cursor } = req.validatedQuery!
+    res.status(200).json({ orders: await orderService.listOrdersForSession({ limit, cursor }) })
+  },
+)
 
 publicRouter.get('/orders/:publicId', requireTableSession, async (req: Request, res: Response) => {
   const order = await orderService.getOrderForSession(String(req.params.publicId))

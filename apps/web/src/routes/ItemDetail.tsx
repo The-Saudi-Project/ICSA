@@ -110,7 +110,7 @@ export default function ItemDetail() {
   }
 
   return (
-    <div className="min-h-dvh bg-ground-sunken md:bg-ground md:p-6 transition-colors flex justify-center">
+    <div id="main" className="min-h-dvh bg-ground-sunken md:bg-ground md:p-6 transition-colors flex justify-center">
       <div className={`w-full max-w-2xl md:rounded-[32px] md:overflow-hidden md:border md:border-border md:shadow-2xl bg-ground relative pb-32 transition-transform duration-500 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
         
         {/* Header/Close Button */}
@@ -329,14 +329,10 @@ export default function ItemDetail() {
             <Button
               variant="primary"
               onClick={add}
-              // Sold out is not a validation error the customer can fix, so the
-              // button says what is true rather than asking for a choice. The
-              // server refuses these orders anyway; this stops the customer
-              // building one it will refuse.
               disabled={item.isSoldOut || unsatisfied.length > 0}
-              className="flex-1 h-12 flex flex-row items-center justify-center sm:justify-between gap-1 sm:gap-2 px-2 sm:px-6 overflow-hidden"
+              className="flex-1 h-12 flex flex-row items-center justify-center sm:justify-between gap-1 sm:gap-2 px-2 sm:px-6 overflow-hidden min-w-0"
             >
-              <span className="truncate whitespace-nowrap text-sm sm:text-base">
+              <span className="truncate whitespace-nowrap text-sm sm:text-base flex-1 text-center sm:text-left">
                 {item.isSoldOut
                   ? t('soldOut')
                   : unsatisfied.length > 0

@@ -72,8 +72,8 @@ export const ar: Translations = {
   statePlacedDetail: 'لقد استلمنا طلبك.',
   stateCashTitle: 'الدفع عند الكاشير',
   stateCashDetail: 'أظهر رقم طلبك. سيبدأ المطبخ بمجرد تأكيد الدفع.',
-  stateConfirmedTitle: 'تم تأكيد الدفع',
-  stateConfirmedDetail: 'طلبك في قائمة الانتظار.',
+  stateConfirmedTitle: 'تم تأكيد الطلب',
+  stateConfirmedDetail: 'طلبك في قائمة الانتظار وقيد التحضير.',
   stateAcceptedTitle: 'المطبخ استلم الطلب',
   stateAcceptedDetail: 'سيتم تحضير طعامك قريباً.',
   statePreparingTitle: 'جاري التحضير',
@@ -153,4 +153,6 @@ export const ar: Translations = {
   nothingInKitchen: 'لا يوجد طلبات في المطبخ.',
   takeaway: 'سفري',
   walkIn: 'بدون طاولة',
+  vatIncluded: 'شامل الضريبة',
+  goBack: 'رجوع',
 };

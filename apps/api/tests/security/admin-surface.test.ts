@@ -57,6 +57,9 @@ const ADMIN_ROUTES: readonly [Method, string][] = [
   ['patch', `/api/v1/app/staff/${SOME_ID}`],
   ['post', `/api/v1/app/staff/${SOME_ID}/reset-password`],
   ['get', '/api/v1/app/dashboard/stats'],
+  // Money- and payment-posture-relevant: VAT rate, service charge, VAT-inclusive
+  // pricing, and cook-before-payment. Owner/manager only.
+  ['patch', '/api/v1/app/restaurants/settings'],
 ]
 
 const call = (session: Session, method: Method, path: string) =>

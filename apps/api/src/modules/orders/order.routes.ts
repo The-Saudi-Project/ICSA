@@ -16,12 +16,14 @@ import {
   OrderStatus,
   transitionOrderSchema,
   createOrderSchema,
+  idempotencyKeySchema,
 } from '@rw/shared'
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../../middleware/auth.js'
 import { requireRole, requireStaff } from '../../middleware/rbac.js'
 import { validate } from '../../middleware/validate.js'
+import { badRequest } from '../../core/errors.js'
 import * as orderService from './order.service.js'
 
 export const orderRouter: Router = Router()
@@ -141,10 +143,15 @@ orderRouter.post(
     }),
   }),
   async (req: Request, res: Response) => {
-    const idempotencyKey = req.headers['x-idempotency-key'] as string
+    const parsed = idempotencyKeySchema.safeParse(req.header('x-idempotency-key'))
+    if (!parsed.success) {
+      throw badRequest(
+        'An X-Idempotency-Key header is required (8-100 characters, letters, digits, - or _).',
+      )
+    }
     const result = await orderService.staffCreateOrder(
       req.body as Parameters<typeof orderService.staffCreateOrder>[0],
-      idempotencyKey,
+      parsed.data,
     )
     if (result.replayed) {
       res.setHeader('X-Idempotent-Replay', 'true')

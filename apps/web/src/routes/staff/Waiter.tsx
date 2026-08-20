@@ -6,6 +6,8 @@ import { fetchBoard, transitionOrder, getStaffUser, type StaffOrder } from '../.
 import { Card } from '../../components/ui/Card.js'
 import { SoundToggle } from '../../components/SoundToggle.js'
 import { useRestaurantSocket } from '../../lib/socket.js'
+import { useToast } from '../../components/ToastContext.js'
+import { useI18n } from '../../lib/i18n.js'
 
 function useMinuteTick() {
   const [, setTick] = useState(0)
@@ -28,6 +30,8 @@ function toneFor(status: string) {
 export default function Waiter() {
   useMinuteTick()
   const queryClient = useQueryClient()
+  const { showToast } = useToast()
+  const { locale } = useI18n()
 
   const { data, isPending, isError } = useQuery({
     queryKey: ['board', 'waiter'],
@@ -56,6 +60,9 @@ export default function Waiter() {
     mutationFn: ({ order, to }: { order: StaffOrder; to: OrderStatus }) =>
       transitionOrder(order.id, to, order.status),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['board', 'waiter'] }),
+    onError: (error) => {
+      showToast(error instanceof Error ? error.message : 'Failed to transition order', 'error')
+    }
   })
 
   const orders = data?.orders ?? []
@@ -171,7 +178,7 @@ export default function Waiter() {
                           <div className="flex gap-5">
                              <span className="tnum text-3xl font-black text-ink/80 mt-1">{line.quantity}</span>
                              <div className="min-w-0">
-                                <span className="text-2xl font-bold text-ink block">{line.nameSnapshot.en}</span>
+                                <span className="text-2xl font-bold text-ink block">{line.nameSnapshot[locale] ?? line.nameSnapshot.en}</span>
                              </div>
                           </div>
                         </li>

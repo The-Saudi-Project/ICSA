@@ -2,7 +2,7 @@ import { forwardRef } from 'react'
 import { money } from '../lib/format.js'
 import type { StaffOrder } from '../lib/staffApi.js'
 
-export const ReceiptPrint = forwardRef<HTMLDivElement, { order: StaffOrder | null }>(({ order }, ref) => {
+export const ReceiptPrint = forwardRef<HTMLDivElement, { order: StaffOrder | null; vatNumber?: string }>(({ order, vatNumber }, ref) => {
   if (!order) return null
 
   return (
@@ -54,7 +54,7 @@ export const ReceiptPrint = forwardRef<HTMLDivElement, { order: StaffOrder | nul
 
       <div className="text-center text-xs space-y-1">
         <p>Thank you for your visit!</p>
-        <p>VAT No: 310000000000003</p>
+        {vatNumber && <p>VAT No: {vatNumber}</p>}
       </div>
     </div>
   )

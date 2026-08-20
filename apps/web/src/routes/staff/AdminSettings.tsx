@@ -1,28 +1,47 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
-import { getSettings, updateSettings, downloadBackup } from '../../lib/staffApi.js'
+import { getSettings, updateSettings } from '../../lib/staffApi.js'
 import { Card } from '../../components/ui/Card.js'
 import { Button } from '../../components/ui/Button.js'
 import { AdminSection, Field, inputClass } from './AdminShell.js'
+import { rawBlob } from '../../lib/staffApi.js'
+import { useToast } from '../../components/ToastContext.js'
 
 export default function AdminSettings() {
   const queryClient = useQueryClient()
   const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: getSettings })
+  const { showToast } = useToast()
 
   const [vatRatePercent, setVatRatePercent] = useState('')
+  const [vatNumber, setVatNumber] = useState('')
   const [serviceChargePercent, setServiceChargePercent] = useState('')
   const [pricesIncludeVat, setPricesIncludeVat] = useState(false)
   const [kitchenStartsBeforePayment, setKitchenStartsBeforePayment] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isDirty, setIsDirty] = useState(false)
 
   useEffect(() => {
     if (settingsQuery.data?.settings) {
       setVatRatePercent(String(settingsQuery.data.settings.vatRatePercent ?? 15))
+      setVatNumber(settingsQuery.data.settings.vatNumber ?? '')
       setServiceChargePercent(String(settingsQuery.data.settings.serviceChargePercent ?? 0))
       setPricesIncludeVat(Boolean(settingsQuery.data.settings.pricesIncludeVat))
       setKitchenStartsBeforePayment(Boolean(settingsQuery.data.settings.kitchenStartsBeforePayment))
+      setIsDirty(false)
     }
   }, [settingsQuery.data])
+
+  useEffect(() => {
+    if (!settingsQuery.data?.settings) return
+    const s = settingsQuery.data.settings
+    const dirty =
+      vatRatePercent !== String(s.vatRatePercent ?? 15) ||
+      vatNumber !== (s.vatNumber ?? '') ||
+      serviceChargePercent !== String(s.serviceChargePercent ?? 0) ||
+      pricesIncludeVat !== Boolean(s.pricesIncludeVat) ||
+      kitchenStartsBeforePayment !== Boolean(s.kitchenStartsBeforePayment)
+    setIsDirty(dirty)
+  }, [vatRatePercent, vatNumber, serviceChargePercent, pricesIncludeVat, kitchenStartsBeforePayment, settingsQuery.data])
 
   const saveSettings = useMutation({
     mutationFn: () => {
@@ -32,12 +51,13 @@ export default function AdminSettings() {
       }
       if (vatRatePercent) payload.vatRatePercent = Number(vatRatePercent)
       if (serviceChargePercent) payload.serviceChargePercent = Number(serviceChargePercent)
+      if (vatNumber !== undefined) payload.vatNumber = vatNumber
       return updateSettings(payload)
     },
     onSuccess: () => {
       setError(null)
       queryClient.invalidateQueries({ queryKey: ['settings'] })
-      alert('Settings saved successfully.')
+      showToast('Settings saved successfully')
     },
     onError: (e: Error) => setError(e.message)
   })
@@ -79,6 +99,16 @@ export default function AdminSettings() {
                 className={inputClass}
                 value={serviceChargePercent}
                 onChange={e => setServiceChargePercent(e.target.value)}
+              />
+            </Field>
+
+            <Field label="VAT Registration Number">
+              <input
+                type="text"
+                className={inputClass}
+                value={vatNumber}
+                onChange={e => setVatNumber(e.target.value)}
+                placeholder="Optional"
               />
             </Field>
           </div>
@@ -128,9 +158,18 @@ export default function AdminSettings() {
               variant="secondary"
               onClick={async () => {
                 try {
-                  await downloadBackup();
+                  const blob = await rawBlob('/app/dashboard/backup')
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `backup-${new Date().toISOString().slice(0, 10)}.zip`
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  URL.revokeObjectURL(url)
+                  showToast('Backup downloaded successfully', 'success')
                 } catch {
-                  alert("Failed to download backup");
+                  showToast('Failed to download backup', 'error')
                 }
               }}
             >
@@ -141,16 +180,22 @@ export default function AdminSettings() {
         </Card>
       </AdminSection>
 
-      <div className="flex justify-end pt-4 border-t border-border/50">
-        <Button 
-          type="button" 
-          onClick={() => saveSettings.mutate()} 
-          isLoading={saveSettings.isPending}
-          disabled={saveSettings.isPending}
-        >
-          Save Settings
-        </Button>
-      </div>
+      {/* Sticky Save Bar */}
+      {isDirty && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-surface/90 backdrop-blur-md border-t border-border shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-50 animate-slide-up flex justify-center md:pl-64">
+          <div className="max-w-5xl w-full flex justify-between items-center px-4">
+            <span className="text-body font-medium text-ink">You have unsaved changes</span>
+            <Button 
+              type="button" 
+              onClick={() => saveSettings.mutate()} 
+              isLoading={saveSettings.isPending}
+              disabled={saveSettings.isPending}
+            >
+              Save Settings
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -906,3 +906,102 @@ describe('the idempotency index constrains only orders that carry a key', () => 
     await expect(writeOrder(b._id, 'shared-key')).resolves.toBeDefined()
   })
 })
+
+/**
+ * Staff order actions — refund and rush.
+ *
+ * Regression for two fixes:
+ *  - the endpoints were keyed by publicId while the routes validate an ObjectId,
+ *    so refund and rush always 404'd (they now resolve the order by its id);
+ *  - refund bypassed the state machine and force-cancelled the order, so a
+ *    terminal COMPLETED order could be edited (it now reverses payment only).
+ */
+describe('staff order actions — refund and rush', () => {
+  it('refunds a paid order by its ObjectId, reversing payment without editing a terminal status', async () => {
+    const shop = await makeShop('refund')
+    const placed = await placeOrder(shop.table.sessionToken, oneBurger(shop.item.id))
+    expect(placed.status).toBe(201)
+
+    // Arrange the usual case a cashier refunds: a completed, paid order.
+    const orderDoc = await OrderModel.findOne({ publicId: placed.body.order.publicId }).setOptions({
+      unscoped: true,
+    })
+    const orderId = orderDoc!._id.toString()
+    await OrderModel.updateOne(
+      { _id: orderDoc!._id },
+      { $set: { status: OrderStatus.COMPLETED, paymentStatus: PaymentStatus.PAID } },
+    ).setOptions({ unscoped: true })
+
+    const res = await request(app)
+      .post(`/api/v1/app/orders/${orderId}/refund`)
+      .set(auth(shop.cashier))
+      .send({})
+
+    expect(res.status).toBe(200)
+    expect(res.body.order.paymentStatus).toBe(PaymentStatus.REFUNDED)
+    // Terminal status is left intact — no forced CANCELLED, no state-machine bypass.
+    expect(res.body.order.status).toBe(OrderStatus.COMPLETED)
+
+    const audit = await AuditLogModel.findOne({
+      action: AuditAction.ORDER_REFUNDED,
+      targetId: orderId,
+    })
+    expect(audit).not.toBeNull()
+  })
+
+  it('refuses to refund an order that was never paid', async () => {
+    const shop = await makeShop('refund2')
+    const placed = await placeOrder(shop.table.sessionToken, oneBurger(shop.item.id))
+    const orderDoc = await OrderModel.findOne({ publicId: placed.body.order.publicId }).setOptions({
+      unscoped: true,
+    })
+
+    const res = await request(app)
+      .post(`/api/v1/app/orders/${orderDoc!._id.toString()}/refund`)
+      .set(auth(shop.cashier))
+      .send({})
+
+    expect(res.status).toBe(400)
+  })
+
+  it('refuses a second refund rather than double-processing', async () => {
+    const shop = await makeShop('refund3')
+    const placed = await placeOrder(shop.table.sessionToken, oneBurger(shop.item.id))
+    const orderDoc = await OrderModel.findOne({ publicId: placed.body.order.publicId }).setOptions({
+      unscoped: true,
+    })
+    const orderId = orderDoc!._id.toString()
+    await OrderModel.updateOne(
+      { _id: orderDoc!._id },
+      { $set: { paymentStatus: PaymentStatus.PAID } },
+    ).setOptions({ unscoped: true })
+
+    const first = await request(app)
+      .post(`/api/v1/app/orders/${orderId}/refund`)
+      .set(auth(shop.cashier))
+      .send({})
+    expect(first.status).toBe(200)
+
+    const second = await request(app)
+      .post(`/api/v1/app/orders/${orderId}/refund`)
+      .set(auth(shop.cashier))
+      .send({})
+    expect(second.status).toBe(400) // no longer PAID
+  })
+
+  it('toggles rush by ObjectId', async () => {
+    const shop = await makeShop('rush')
+    const placed = await placeOrder(shop.table.sessionToken, oneBurger(shop.item.id))
+    const orderDoc = await OrderModel.findOne({ publicId: placed.body.order.publicId }).setOptions({
+      unscoped: true,
+    })
+
+    const res = await request(app)
+      .patch(`/api/v1/app/orders/${orderDoc!._id.toString()}/rush`)
+      .set(auth(shop.kitchen))
+      .send({ isRush: true })
+
+    expect(res.status).toBe(200)
+    expect(res.body.order.isRush).toBe(true)
+  })
+})

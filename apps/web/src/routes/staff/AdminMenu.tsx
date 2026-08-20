@@ -28,6 +28,7 @@ import {
 } from '../../lib/staffApi.js'
 import { AdminSection, Field, inputClass, quietButtonClass } from './AdminShell.js'
 import { MenuItemEditor } from './MenuItemEditor.js'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog.js'
 
 /** Null means "creating"; an item means "editing that one"; false means closed. */
 type EditorState = { open: false } | { open: true; item: AdminMenuItem | null }
@@ -234,6 +235,15 @@ export default function AdminMenu() {
               onCancel={() => setEditingCategory(null)}
             />
           ) : null}
+
+          {editingCategory?.id === category.id && (
+            <div ref={(el) => {
+              if (el) {
+                // Short delay to ensure it's rendered and expanded
+                setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
+              }
+            }} />
+          )}
 
           <Card variant="glass" className="hidden md:block overflow-hidden border-border/40 p-0">
             <div className="overflow-x-auto w-full">
@@ -489,6 +499,7 @@ function CategoryEditor({
   const [nameAr, setNameAr] = useState(category.name.ar ?? '')
   const [sortOrder, setSortOrder] = useState(String(category.sortOrder))
   const [error, setError] = useState<string | null>(null)
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
 
   const save = useMutation({
     mutationFn: () => {
@@ -591,12 +602,23 @@ function CategoryEditor({
                 ? `Move or delete the ${itemCount} item(s) in here first`
                 : undefined
             }
-            onClick={() => {
-              if (window.confirm(`Delete the category "${category.name.en}"?`)) remove.mutate()
-            }}
+            onClick={() => setIsConfirmOpen(true)}
           >
             Delete
           </Button>
+
+          <ConfirmDialog
+            isOpen={isConfirmOpen}
+            title="Delete Category"
+            message={`Are you sure you want to delete the category "${category.name.en}"? This action cannot be undone.`}
+            destructive
+            confirmText="Delete Category"
+            onConfirm={() => {
+              setIsConfirmOpen(false)
+              remove.mutate()
+            }}
+            onCancel={() => setIsConfirmOpen(false)}
+          />
 
           {itemCount > 0 ? (
             <span className="text-caption text-ink-faint">

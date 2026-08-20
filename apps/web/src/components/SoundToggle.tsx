@@ -24,6 +24,7 @@ export function SoundToggle() {
 
   return (
     <button
+      type="button"
       onClick={toggle}
       title={unlocked ? "Sound is ON" : "Click to enable sound"}
       className={`p-2 rounded-xl border transition-colors flex items-center justify-center ${

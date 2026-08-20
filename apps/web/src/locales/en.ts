@@ -70,8 +70,8 @@ export const en = {
   statePlacedDetail: 'We have received your order.',
   stateCashTitle: 'Pay at the Counter',
   stateCashDetail: 'Show your order number. The kitchen starts once payment is confirmed.',
-  stateConfirmedTitle: 'Payment Confirmed',
-  stateConfirmedDetail: 'Your order is in the queue.',
+  stateConfirmedTitle: 'Order Confirmed',
+  stateConfirmedDetail: 'Your order is in the queue and is being prepared.',
   stateAcceptedTitle: 'Kitchen Accepted',
   stateAcceptedDetail: 'Your food will be prepared soon.',
   statePreparingTitle: 'Being Prepared',
@@ -151,6 +151,8 @@ export const en = {
   nothingInKitchen: 'Nothing in the kitchen.',
   takeaway: 'Takeaway',
   walkIn: 'Walk-in',
+  vatIncluded: 'VAT Included',
+  goBack: 'Go Back',
 };
 
 export type Translations = typeof en;
