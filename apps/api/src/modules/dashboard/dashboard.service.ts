@@ -152,7 +152,6 @@ export async function getRestaurantStats(period: string = 'today') {
     trend,
   }
   } catch (error) {
-    console.error('getRestaurantStats CRASH:', (error as Error).stack);
     throw error;
   }
 }

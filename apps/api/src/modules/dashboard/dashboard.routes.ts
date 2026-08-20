@@ -15,7 +15,6 @@ appDashboardRouter.get('/stats', async (req: Request, res: Response, next) => {
     const stats = await dashboardService.getRestaurantStats(period)
     res.status(200).json(stats)
   } catch (error) {
-    console.error("Dashboard error:", error);
     next(error)
   }
 })
