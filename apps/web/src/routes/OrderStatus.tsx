@@ -310,7 +310,7 @@ export default function OrderStatus() {
 
           {/* Progress Timeline */}
           <div className="mt-10 px-2">
-            <StateBand status={order.status} />
+            <StateBand status={order.paymentStatus === 'CASH_PENDING' && !SETTLED.has(order.status) ? 'CASH_PENDING' : order.status} />
             <p className="mt-8 text-center text-small font-medium text-ink-faint">
               {t('placed')} {relativeTime(order.placedAt)}
             </p>
