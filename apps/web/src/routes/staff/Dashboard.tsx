@@ -7,8 +7,11 @@ import { Skeleton } from '../../components/ui/Skeleton.js'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { Price } from '../../components/Price.js'
 
+import { useState } from 'react'
+
 export default function Dashboard() {
-  const stats = useQuery({ queryKey: ['dashboard', 'stats'], queryFn: fetchRestaurantStats })
+  const [period, setPeriod] = useState('today')
+  const stats = useQuery({ queryKey: ['dashboard', 'stats', period], queryFn: () => fetchRestaurantStats(period) })
   const user = getStaffUser()
   const firstName = user?.name.split(' ')[0] || 'Admin'
 
@@ -18,6 +21,31 @@ export default function Dashboard() {
     if (hour < 17) return 'Good afternoon'
     return 'Good evening'
   }
+
+  const generatePeriodOptions = () => {
+    const options = [
+      { value: 'today', label: 'Today' },
+      { value: 'last_7_days', label: 'Last 7 Days' },
+    ];
+    
+    const d = new Date();
+    for (let i = 0; i < 12; i++) {
+      const monthDate = new Date(d.getFullYear(), d.getMonth() - i, 1);
+      const value = `month_${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+      const label = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      options.push({ value, label });
+    }
+    
+    for (let i = 0; i < 3; i++) {
+      const year = d.getFullYear() - i;
+      options.push({ value: `year_${year}`, label: `Year ${year}` });
+    }
+    
+    return options;
+  };
+  
+  const periodOptions = generatePeriodOptions();
+  const selectedPeriodLabel = periodOptions.find(o => o.value === period)?.label || 'Today';
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 relative animate-fade-in pb-12 pt-16">
@@ -32,13 +60,27 @@ export default function Dashboard() {
             {getGreeting()}, <span className="text-accent">{firstName}</span>.
           </h1>
           <p className="text-body text-ink-soft mt-2 max-w-2xl">
-            Here's what's happening at your restaurant today. Monitor your key metrics and manage operations in real-time.
+            Here's what's happening at your restaurant for the selected period. Monitor your key metrics and manage operations in real-time.
           </p>
         </div>
-        <div className="text-right">
+        <div className="flex flex-col items-end gap-3">
           <p className="text-small font-bold text-ink-faint uppercase tracking-wider">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
+          <div className="relative">
+            <select 
+              value={period} 
+              onChange={(e) => setPeriod(e.target.value)}
+              className="bg-surface/50 backdrop-blur-md border border-border/50 text-ink font-bold text-sm rounded-lg pl-4 pr-10 py-2 outline-none focus:ring-2 focus:ring-accent/50 appearance-none shadow-sm cursor-pointer"
+            >
+              {periodOptions.map(opt => (
+                <option key={opt.value} value={opt.value} className="bg-surface text-ink">{opt.label}</option>
+              ))}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-ink-soft">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -134,7 +176,7 @@ export default function Dashboard() {
       {!stats.isPending && !stats.error && stats.data?.trend && (
         <section className="relative z-10 mt-12">
           <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-h3 font-bold text-ink tracking-tight">Revenue Trend (Last 7 Days)</h2>
+            <h2 className="text-h3 font-bold text-ink tracking-tight">Revenue Trend ({selectedPeriodLabel})</h2>
             <div className="h-px bg-border flex-1 opacity-50"></div>
           </div>
           <Card variant="glass" className="p-6 h-[400px]">

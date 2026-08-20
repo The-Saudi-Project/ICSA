@@ -30,65 +30,120 @@ import { MenuItemModel } from '../menu/menuItem.model.js'
  */
 const placedToday = () => ({ placedAt: trusted({ $gte: startOfBusinessDay() }) })
 
-export async function getRestaurantStats() {
-  const [orders, staffCount] = await Promise.all([
-    tenantRepo(OrderModel).find(placedToday()),
+export async function getRestaurantStats(period: string = 'today') {
+  // Real-time stats (independent of selected period)
+  const [activeOrdersDocs, staffCount] = await Promise.all([
+    tenantRepo(OrderModel).find({ status: { $in: [OrderStatus.PLACED, OrderStatus.PREPARING, OrderStatus.READY] } }),
     tenantRepo(UserModel).countDocuments(),
   ])
+  const activeOrders = activeOrdersDocs.length;
 
-  let todayRevenueHalalas = 0
-  let activeOrders = 0
-  const todayOrdersCount = orders.length
+  let startDate = new Date();
+  let endDate = new Date();
+  
+  if (period === 'today') {
+    startDate = startOfBusinessDay();
+  } else if (period === 'last_7_days') {
+    startDate.setDate(startDate.getDate() - 7);
+    startDate.setHours(0, 0, 0, 0);
+  } else if (period.startsWith('month_')) {
+    const [year, month] = period.split('_')[1].split('-');
+    startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
+  } else if (period.startsWith('year_')) {
+    const year = parseInt(period.split('_')[1]);
+    startDate = new Date(year, 0, 1);
+    endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+  }
 
-  for (const order of orders) {
+  const query: any = { placedAt: trusted({ $gte: startDate }) };
+  if (period.startsWith('month_') || period.startsWith('year_')) {
+    query.placedAt = trusted({ $gte: startDate, $lte: endDate });
+  }
+
+  const periodOrders = await tenantRepo(OrderModel).find(query);
+
+  let periodRevenueHalalas = 0;
+  const periodOrdersCount = periodOrders.length;
+
+  for (const order of periodOrders) {
     if (order.status === OrderStatus.COMPLETED) {
-      todayRevenueHalalas += order.totals?.grandTotalHalalas ?? 0
-    }
-    if (
-      order.status === OrderStatus.PLACED ||
-      order.status === OrderStatus.PREPARING ||
-      order.status === OrderStatus.READY
-    ) {
-      activeOrders++
+      periodRevenueHalalas += order.totals?.grandTotalHalalas ?? 0;
     }
   }
 
-  // 7-day trend
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-  sevenDaysAgo.setHours(0, 0, 0, 0)
+  const trendMap = new Map<string, { revenue: number; orders: number }>();
   
-  const allWeekOrders = await tenantRepo(OrderModel).find({ placedAt: trusted({ $gte: sevenDaysAgo }) })
-  
-  const trendMap = new Map<string, { revenue: number; orders: number }>()
-  for (let i = 0; i < 7; i++) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    trendMap.set(key, { revenue: 0, orders: 0 })
-  }
-
-  for (const order of allWeekOrders) {
-    const dateKey = order.placedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    if (trendMap.has(dateKey)) {
-      const existing = trendMap.get(dateKey)!
-      existing.orders++
-      if (order.status === OrderStatus.COMPLETED) {
-        existing.revenue += order.totals?.grandTotalHalalas ?? 0
+  if (period === 'today' || period === 'last_7_days') {
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      trendMap.set(key, { revenue: 0, orders: 0 });
+    }
+    
+    for (const order of periodOrders) {
+      const dateKey = order.placedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (trendMap.has(dateKey)) {
+        const existing = trendMap.get(dateKey)!;
+        existing.orders++;
+        if (order.status === OrderStatus.COMPLETED) {
+          existing.revenue += order.totals?.grandTotalHalalas ?? 0;
+        }
+      }
+    }
+  } else if (period.startsWith('month_')) {
+    const daysInMonth = endDate.getDate();
+    const [year, month] = period.split('_')[1].split('-');
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = new Date(parseInt(year), parseInt(month) - 1, i);
+      const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      trendMap.set(key, { revenue: 0, orders: 0 });
+    }
+    
+    for (const order of periodOrders) {
+      const dateKey = order.placedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (trendMap.has(dateKey)) {
+        const existing = trendMap.get(dateKey)!;
+        existing.orders++;
+        if (order.status === OrderStatus.COMPLETED) {
+          existing.revenue += order.totals?.grandTotalHalalas ?? 0;
+        }
+      }
+    }
+  } else if (period.startsWith('year_')) {
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(startDate.getFullYear(), i, 1);
+      const key = d.toLocaleDateString('en-US', { month: 'short' });
+      trendMap.set(key, { revenue: 0, orders: 0 });
+    }
+    
+    for (const order of periodOrders) {
+      const dateKey = order.placedAt.toLocaleDateString('en-US', { month: 'short' });
+      if (trendMap.has(dateKey)) {
+        const existing = trendMap.get(dateKey)!;
+        existing.orders++;
+        if (order.status === OrderStatus.COMPLETED) {
+          existing.revenue += order.totals?.grandTotalHalalas ?? 0;
+        }
       }
     }
   }
 
-  // Convert map to array and reverse to chronological order
   const trend = Array.from(trendMap.entries()).map(([date, data]) => ({
     date,
-    revenue: data.revenue / 100, // format to SAR for charting
+    revenue: data.revenue / 100,
     orders: data.orders
-  })).reverse()
+  }));
+  
+  if (period === 'today' || period === 'last_7_days') {
+    trend.reverse();
+  }
 
   return {
-    todayRevenueHalalas,
-    todayOrdersCount,
+    todayRevenueHalalas: periodRevenueHalalas,
+    todayOrdersCount: periodOrdersCount,
     activeOrders,
     staffCount,
     trend,

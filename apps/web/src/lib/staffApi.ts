@@ -300,8 +300,8 @@ export interface RestaurantStats {
   trend: { date: string; revenue: number; orders: number }[]
 }
 
-export const fetchRestaurantStats = () =>
-  staffApi<RestaurantStats>('/app/dashboard/stats')
+export const fetchRestaurantStats = (period?: string) =>
+  staffApi<RestaurantStats>(`/app/dashboard/stats${period ? `?period=${period}` : ''}`)
 
 /* ── menu ─────────────────────────────────────────────────────────────────── */
 

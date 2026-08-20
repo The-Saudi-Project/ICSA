@@ -9,9 +9,10 @@ export const platformDashboardRouter: Router = Router()
 
 // App dashboard (Restaurant Owner / Manager)
 appDashboardRouter.use(requireAuth, requireRestaurantAdmin)
-appDashboardRouter.get('/stats', async (_req: Request, res: Response, next) => {
+appDashboardRouter.get('/stats', async (req: Request, res: Response, next) => {
   try {
-    const stats = await dashboardService.getRestaurantStats()
+    const period = req.query.period as string | undefined;
+    const stats = await dashboardService.getRestaurantStats(period)
     res.status(200).json(stats)
   } catch (error) {
     next(error)
