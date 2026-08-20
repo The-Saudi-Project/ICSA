@@ -31,16 +31,12 @@ export async function verifyOtp(phone: string, code: string): Promise<{ token: s
   otp.usedAt = new Date()
   await otp.save()
 
-  // Find or create customer
-  let customer = await CustomerModel.findOne({ phone })
-  if (!customer) {
-    customer = await CustomerModel.create({ phone })
-  }
-
-  // Generate a simple token (in production, use JWT or proper session)
-  // Since we use cookie-based auth for customers (TableSession), we can generate a JWT for the customer 
-  // or just return the customer ID and let the auth layer handle it.
-  
+  // Find or create customer atomically to prevent duplicate key race conditions
+  const customer = await CustomerModel.findOneAndUpdate(
+    { phone },
+    { $setOnInsert: { phone } },
+    { upsert: true, new: true }
+  )  
   return { token: customer._id.toString() }
 }
 

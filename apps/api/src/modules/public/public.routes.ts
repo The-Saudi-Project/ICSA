@@ -205,7 +205,7 @@ publicRouter.post('/call-waiter', requireTableSession, async (_req: Request, res
     throw badRequest('Table ID not found in session')
   }
 
-  const table = await TableModel.findById(context.tableId)
+  const table = await TableModel.findById(context.tableId).setOptions({ unscoped: true })
   if (!table) {
     throw notFound('Table not found')
   }

@@ -141,7 +141,7 @@ export default function Menu() {
         </div>
       </header>
 
-      <main id="main" className="mx-auto max-w-2xl px-4 pb-32" style={{ paddingTop: 'var(--app-header-h, 0px)' }}>
+      <main id="main" className="mx-auto max-w-2xl px-4 pb-32">
         {isPending ? <MenuSkeleton /> : null}
 
         {isError ? (
