@@ -240,14 +240,27 @@ export default function Cashier() {
             New Order
           </Link>
           <SoundToggle />
-          <div className="bg-surface-strong border border-border/50 shadow-sm rounded-2xl px-6 py-4 flex items-center gap-4">
-             <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent">
-               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-             </div>
-             <div>
-               <span className="text-small font-bold text-ink-soft uppercase tracking-wider block leading-none">Active</span>
-               <span className="text-2xl font-bold text-ink leading-none mt-1 block">{orders.length}</span>
-             </div>
+          <div className="relative group overflow-hidden bg-gradient-to-br from-surface to-surface-strong border border-border/40 shadow-lg rounded-2xl px-6 py-4 flex items-center gap-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+            {/* Ambient background glow */}
+            <div className="absolute inset-0 bg-accent/5 group-hover:bg-accent/10 transition-colors pointer-events-none"></div>
+            <div className="absolute -top-6 -right-6 w-20 h-20 bg-accent/20 rounded-full blur-[20px] group-hover:bg-accent/30 transition-colors pointer-events-none"></div>
+            
+            <div className="relative z-10 w-12 h-12 rounded-xl bg-accent text-white flex items-center justify-center shadow-md ring-4 ring-accent/20">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                <path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/>
+              </svg>
+            </div>
+            <div className="relative z-10">
+              <span className="text-xs font-black text-accent uppercase tracking-widest block leading-none mb-1 flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  {orders.length > 0 && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>}
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+                </span>
+                Active Tickets
+              </span>
+              <span className="text-3xl font-black text-ink leading-none block drop-shadow-sm">{orders.length}</span>
+            </div>
           </div>
         </div>
       </div>
