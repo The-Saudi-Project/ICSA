@@ -17,8 +17,8 @@ export function CallWaiterFab() {
     try {
       await api('/public/call-waiter', { method: 'POST' })
       showToast('Waiter has been called', 'success')
-    } catch (err: any) {
-      showToast(err.message || 'Failed to call waiter', 'error')
+    } catch (err) {
+      showToast((err as Error).message || 'Failed to call waiter', 'error')
     } finally {
       setCalling(false)
     }

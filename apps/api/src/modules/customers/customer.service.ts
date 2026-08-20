@@ -1,6 +1,6 @@
 import { CustomerModel, OtpCodeModel } from './customer.model.js'
 import { randomInt } from 'node:crypto'
-import { badRequest, conflict } from '../../core/errors.js'
+import { badRequest } from '../../core/errors.js'
 
 export async function generateOtp(phone: string): Promise<string> {
   const code = randomInt(100000, 999999).toString()

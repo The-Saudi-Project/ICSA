@@ -16,7 +16,7 @@ export default function MyOrders() {
   })
 
   // If unauthorized, show a prompt to login
-  if (error && (error as any).status === 401) {
+  if (error && (error as { status?: number }).status === 401) {
     return (
       <div className="min-h-dvh bg-ground flex flex-col items-center justify-center p-6 text-center">
         <div className="w-16 h-16 bg-surface border border-border rounded-2xl flex items-center justify-center mb-6 text-ink-soft">
@@ -70,9 +70,9 @@ export default function MyOrders() {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-small font-bold text-ink-faint">Order #{order.orderNumber}</p>
-                      {/* Using any to bypass TS error because we added restaurantId populate in backend */}
-                      {(order as any).restaurantId && (
-                        <p className="text-xs font-bold text-ink-soft">{(order as any).restaurantId.name?.en || (order as any).restaurantId.name?.ar}</p>
+                      {/* Using unknown cast to bypass TS error because we added restaurantId populate in backend */}
+                      {(order as unknown as { restaurantId?: { name?: { en?: string; ar?: string } } }).restaurantId && (
+                        <p className="text-xs font-bold text-ink-soft">{(order as unknown as { restaurantId?: { name?: { en?: string; ar?: string } } }).restaurantId?.name?.en || (order as unknown as { restaurantId?: { name?: { en?: string; ar?: string } } }).restaurantId?.name?.ar}</p>
                       )}
                       <p className="text-body font-bold text-ink mt-1">
                         {order.items.length} item{order.items.length === 1 ? '' : 's'}

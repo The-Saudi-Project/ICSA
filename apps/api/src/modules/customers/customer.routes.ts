@@ -2,11 +2,11 @@ import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
 import { CustomerModel } from './customer.model.js'
 import { OrderModel } from '../orders/order.model.js'
-import { badRequest, unauthorized } from '../../core/errors.js'
+import { unauthenticated } from '../../core/errors.js'
 import { validate } from '../../middleware/validate.js'
 import * as customerService from './customer.service.js'
 import { requireAuth } from '../../middleware/auth.js'
-import { requireRole, requireStaff } from '../../middleware/rbac.js'
+import { requireRole } from '../../middleware/rbac.js'
 import { Role } from '@rw/shared'
 
 export const customerRouter: Router = Router()
@@ -57,10 +57,10 @@ customerRouter.get(
   '/orders',
   async (req: Request, res: Response) => {
     const customerToken = req.header('x-customer-token')
-    if (!customerToken) throw unauthorized('Customer token required')
+    if (!customerToken) throw unauthenticated('Customer token required')
 
     const customer = await CustomerModel.findById(customerToken)
-    if (!customer) throw unauthorized('Invalid customer token')
+    if (!customer) throw unauthenticated('Invalid customer token')
 
     // Find all orders placed with this phone number across all restaurants
     const orders = await OrderModel.find({ customerPhone: customer.phone })

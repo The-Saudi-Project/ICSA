@@ -338,7 +338,7 @@ export async function staffCreateOrder(
     const restaurant = await RestaurantModel.findById(restaurantId)
     if (!restaurant) throw notFound('Restaurant not found')
 
-    let table: { label?: string } | null = null
+    let table: { label?: string; assignedWaiterId?: any } | null = null
     let sessionId: unknown = null
 
     if (input.tableId) {
@@ -375,7 +375,7 @@ export async function staffCreateOrder(
     const { status, paymentStatus } = initialStatusFor(
       input.paymentMethod,
       settings.kitchenStartsBeforePayment,
-      (input as any).customerPhone
+      (input as Record<string, unknown>).customerPhone as string | undefined
     )
 
     const orderNumber = await nextOrderNumber(restaurantId)

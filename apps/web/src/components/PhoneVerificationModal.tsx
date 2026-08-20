@@ -36,8 +36,8 @@ export function PhoneVerificationModal({
         await requestOtp(phone)
         setOtpSent(true)
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to send OTP. Please try again.')
+    } catch (err) {
+      setError((err as Error).message || 'Failed to send OTP. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -52,8 +52,8 @@ export function PhoneVerificationModal({
       localStorage.setItem('customerPhone', phone)
       localStorage.setItem('customerToken', result.token)
       onVerified()
-    } catch (err: any) {
-      setError(err.message || 'Invalid OTP. Please try again.')
+    } catch (err) {
+      setError((err as Error).message || 'Invalid OTP. Please try again.')
     } finally {
       setLoading(false)
     }
