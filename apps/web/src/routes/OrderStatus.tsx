@@ -73,7 +73,7 @@ const SETTLED = new Set<string>([
   Status.EXPIRED,
 ])
 
-function headline(order: any, t: (key: keyof Translations) => string): { title: string; detail: string; icon: string } {
+function headline(order: { status: string; paymentStatus?: string }, t: (key: keyof Translations) => string): { title: string; detail: string; icon: string } {
   if (order.paymentStatus === 'CASH_PENDING' && !SETTLED.has(order.status)) {
     return { title: t('stateCashTitle'), detail: t('stateCashDetail'), icon: '💵' }
   }
