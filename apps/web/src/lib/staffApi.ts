@@ -272,10 +272,10 @@ export const refundOrder = (id: string) =>
   })
 
 export const getSettings = () =>
-  staffApi<{ settings: { estimatedWaitMinutes?: number; vatRatePercent?: number; serviceChargePercent?: number; pricesIncludeVat?: boolean; kitchenStartsBeforePayment?: boolean; vatNumber?: string } }>('/app/restaurants/settings')
+  staffApi<{ settings: { estimatedWaitMinutes?: number; vatRatePercent?: number; serviceChargePercent?: number; pricesIncludeVat?: boolean; kitchenStartsBeforePayment?: boolean; vatNumber?: string; name?: { en: string; ar?: string } } }>('/app/restaurants/settings')
 
 export const updateSettings = (settings: unknown) =>
-  staffApi<{ settings: { estimatedWaitMinutes?: number; vatRatePercent?: number; serviceChargePercent?: number; pricesIncludeVat?: boolean; kitchenStartsBeforePayment?: boolean; vatNumber?: string } }>('/app/restaurants/settings', {
+  staffApi<{ settings: { estimatedWaitMinutes?: number; vatRatePercent?: number; serviceChargePercent?: number; pricesIncludeVat?: boolean; kitchenStartsBeforePayment?: boolean; vatNumber?: string; name?: { en: string; ar?: string } } }>('/app/restaurants/settings', {
     method: 'PATCH',
     body: JSON.stringify(settings)
   })

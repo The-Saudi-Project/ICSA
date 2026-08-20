@@ -107,6 +107,6 @@ restaurantRouter.patch(
 
 restaurantRouter.get('/settings', async (_req: Request, res: Response) => {
   const restaurantId = requireTenantId()
-  const restaurant = await RestaurantModel.findById(restaurantId).select('settings vatNumber')
-  res.status(200).json({ settings: { ...restaurant?.settings, vatNumber: restaurant?.vatNumber } })
+  const restaurant = await RestaurantModel.findById(restaurantId).select('settings vatNumber name')
+  res.status(200).json({ settings: { ...restaurant?.settings, vatNumber: restaurant?.vatNumber, name: restaurant?.name } })
 })

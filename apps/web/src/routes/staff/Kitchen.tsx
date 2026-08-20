@@ -336,7 +336,7 @@ export default function Kitchen() {
                         type="button"
                         onClick={() => advance.mutate({ order, to: next })}
                         disabled={advance.isPending}
-                        className="mt-8 w-full h-20 text-2xl font-black text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all rounded-2xl border-none disabled:opacity-50 flex items-center justify-center gap-3"
+                        className="mt-8 w-full h-14 sm:h-16 md:h-20 text-lg sm:text-xl md:text-2xl font-black text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all rounded-2xl border-none disabled:opacity-50 flex items-center justify-center gap-2 sm:gap-3"
                         style={{ background: tone.color }}
                       >
                         {NEXT_LABEL[next] ?? next}

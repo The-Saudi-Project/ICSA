@@ -153,7 +153,7 @@ export default function Platform() {
                   <Card variant="glass" className="p-6 relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-status-success-wash to-transparent pointer-events-none"></div>
                     <span className="text-small font-bold text-ink-soft uppercase tracking-wider flex items-center gap-2 relative z-10">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                      <span className="font-bold text-lg leading-none pb-0.5">⃁</span>
                       Total Revenue
                     </span>
                     <div className="mt-2 block relative z-10 text-status-success font-black">

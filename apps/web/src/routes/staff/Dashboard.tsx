@@ -70,7 +70,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-4">
                 <span className="text-small font-bold text-ink-soft uppercase tracking-wider">Revenue</span>
                 <div className="w-8 h-8 rounded-full bg-gold-wash text-gold flex items-center justify-center">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                  <span className="font-bold text-lg leading-none pb-0.5">⃁</span>
                 </div>
               </div>
               <div>

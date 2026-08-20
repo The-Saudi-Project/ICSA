@@ -153,9 +153,18 @@ export default function Cashier() {
     (o) => o.paymentStatus !== PaymentStatus.CASH_PENDING && o.status !== OrderStatus.READY && o.status !== OrderStatus.COMPLETED
   )
 
+  const settings = settingsQuery.data?.settings
+
   return (
     <>
-      <ReceiptPrint ref={receiptRef} order={receiptOrder} vatNumber={settingsQuery.data?.settings?.vatNumber} />
+      <ReceiptPrint
+        ref={receiptRef}
+        order={receiptOrder}
+        vatNumber={settings?.vatNumber}
+        restaurantName={settings?.name?.en}
+        cashierName={user?.name}
+        vatRatePercent={settings?.vatRatePercent}
+      />
       <div className="max-w-6xl mx-auto pt-10 pb-20 animate-fade-in relative px-6 no-print">
         {confirmModalOrder && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
