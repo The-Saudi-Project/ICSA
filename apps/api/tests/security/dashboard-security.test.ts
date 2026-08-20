@@ -103,7 +103,7 @@ describe('the restaurant dashboard counts this tenant and no other', () => {
     await makeOrder({ restaurant: a.restaurant, grandTotalHalalas: 2500 })
 
     const res = await statsFor(a.owner.email)
-
+    if (res.status !== 200) console.log(res.body);
     expect(res.status).toBe(200)
     expect(res.body.todayOrdersCount).toBe(2)
     expect(res.body.todayRevenueHalalas).toBe(7000)

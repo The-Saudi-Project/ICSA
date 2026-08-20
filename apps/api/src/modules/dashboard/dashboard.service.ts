@@ -31,11 +31,12 @@ import { MenuItemModel } from '../menu/menuItem.model.js'
 const placedToday = () => ({ placedAt: trusted({ $gte: startOfBusinessDay() }) })
 
 export async function getRestaurantStats(period: string = 'today') {
-  // Real-time stats (independent of selected period)
-  const [activeOrdersDocs, staffCount] = await Promise.all([
-    tenantRepo(OrderModel).find({ status: { $in: [OrderStatus.PLACED, OrderStatus.PREPARING, OrderStatus.READY] } }),
-    tenantRepo(UserModel).countDocuments(),
-  ])
+  try {
+    // Real-time stats (independent of selected period)
+    const [activeOrdersDocs, staffCount] = await Promise.all([
+      tenantRepo(OrderModel).find({ status: trusted({ $in: [OrderStatus.PLACED, OrderStatus.PREPARING, OrderStatus.READY] }) }),
+      tenantRepo(UserModel).countDocuments(),
+    ])
   const activeOrders = activeOrdersDocs.length;
 
   let startDate = new Date();
@@ -149,6 +150,10 @@ export async function getRestaurantStats(period: string = 'today') {
     activeOrders,
     staffCount,
     trend,
+  }
+  } catch (error) {
+    console.error('getRestaurantStats CRASH:', (error as Error).stack);
+    throw error;
   }
 }
 
