@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button.js'
 import { useState, useRef, useEffect } from 'react'
 import { useI18n } from '../lib/i18n.js'
 import { usePullToRefresh } from '../hooks/usePullToRefresh.js'
+import { CallWaiterFab } from '../components/CallWaiterFab.js'
 
 export default function Menu() {
   const session = getSession()
@@ -235,6 +236,8 @@ export default function Menu() {
           </div>
         </div>
       ) : null}
+      
+      <CallWaiterFab />
     </div>
   )
 }

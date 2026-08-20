@@ -1,0 +1,49 @@
+import { CustomerModel, OtpCodeModel } from './customer.model.js'
+import { randomInt } from 'node:crypto'
+import { badRequest, conflict } from '../../core/errors.js'
+
+export async function generateOtp(phone: string): Promise<string> {
+  const code = randomInt(100000, 999999).toString()
+  
+  await OtpCodeModel.create({
+    phone,
+    code,
+    expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
+  })
+
+  // In a real app, send SMS here. For now, it just goes into the DB for the mock dashboard.
+  return code
+}
+
+export async function verifyOtp(phone: string, code: string): Promise<{ token: string }> {
+  const otp = await OtpCodeModel.findOne({
+    phone,
+    code,
+    usedAt: { $exists: false },
+    expiresAt: { $gt: new Date() }
+  })
+
+  if (!otp) {
+    throw badRequest('Invalid or expired OTP')
+  }
+
+  // Mark as used
+  otp.usedAt = new Date()
+  await otp.save()
+
+  // Find or create customer
+  let customer = await CustomerModel.findOne({ phone })
+  if (!customer) {
+    customer = await CustomerModel.create({ phone })
+  }
+
+  // Generate a simple token (in production, use JWT or proper session)
+  // Since we use cookie-based auth for customers (TableSession), we can generate a JWT for the customer 
+  // or just return the customer ID and let the auth layer handle it.
+  
+  return { token: customer._id.toString() }
+}
+
+export async function getMockOtps() {
+  return OtpCodeModel.find({}, { _id: 0, phone: 1, code: 1, createdAt: 1, usedAt: 1 }).sort({ createdAt: -1 }).limit(50)
+}

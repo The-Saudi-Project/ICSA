@@ -20,6 +20,8 @@ import { Role } from './enums.js'
 export const OrderStatus = {
   /** Placed by the customer. Nothing has been decided about payment yet. */
   PLACED: 'PLACED',
+  /** A non-Saudi phone number order waiting for a waiter to verify them physically. */
+  PENDING_VERIFICATION: 'PENDING_VERIFICATION',
   /** Cash order waiting for a cashier to confirm the money was handed over. */
   CASH_PENDING: 'CASH_PENDING',
   /** Payment settled (or the restaurant cooks first). The kitchen may take it. */
@@ -74,10 +76,19 @@ export const ORDER_TRANSITIONS: Readonly<
   [OrderStatus.PLACED]: {
     // The system routes a new order according to payment method and the
     // restaurant's "cook before payment" setting. Staff never do this by hand.
+    [OrderStatus.PENDING_VERIFICATION]: [Actor.SYSTEM],
     [OrderStatus.CASH_PENDING]: [Actor.SYSTEM],
     [OrderStatus.CONFIRMED]: [Actor.SYSTEM],
     [OrderStatus.REJECTED]: [Actor.CASHIER, Actor.MANAGER, Actor.OWNER],
     [OrderStatus.CANCELLED]: [Actor.CUSTOMER, Actor.CASHIER, Actor.MANAGER, Actor.OWNER],
+    [OrderStatus.EXPIRED]: [Actor.SYSTEM],
+  },
+  [OrderStatus.PENDING_VERIFICATION]: {
+    // Waiter physically verifies the order and pushes it forward.
+    [OrderStatus.CASH_PENDING]: [Actor.WAITER, Actor.CASHIER, Actor.MANAGER, Actor.OWNER],
+    [OrderStatus.CONFIRMED]: [Actor.WAITER, Actor.CASHIER, Actor.MANAGER, Actor.OWNER],
+    [OrderStatus.REJECTED]: [Actor.WAITER, Actor.CASHIER, Actor.MANAGER, Actor.OWNER],
+    [OrderStatus.CANCELLED]: [Actor.CUSTOMER, Actor.WAITER, Actor.CASHIER, Actor.MANAGER, Actor.OWNER],
     [OrderStatus.EXPIRED]: [Actor.SYSTEM],
   },
   [OrderStatus.CASH_PENDING]: {
@@ -161,6 +172,7 @@ export const CASHIER_BOARD_STATUSES: readonly OrderStatus[] = [
 
 /** Statuses a waiter screen shows: anything currently cooking or ready to serve. */
 export const WAITER_BOARD_STATUSES: readonly OrderStatus[] = [
+  OrderStatus.PENDING_VERIFICATION,
   OrderStatus.CONFIRMED,
   OrderStatus.KITCHEN_ACCEPTED,
   OrderStatus.PREPARING,

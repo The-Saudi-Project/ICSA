@@ -14,7 +14,6 @@ import {
   updateTable,
   rawBlob,
   type AdminTable,
-  type AdminStaffMember,
 } from '../../lib/staffApi.js'
 import { Card } from '../../components/ui/Card.js'
 import { AdminSection, Field, inputClass, primaryButtonClass, quietButtonClass } from './AdminShell.js'

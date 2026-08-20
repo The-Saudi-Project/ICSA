@@ -112,7 +112,15 @@ function hashRequest(input: unknown): string {
 function initialStatusFor(
   paymentMethod: string,
   kitchenStartsBeforePayment: boolean,
+  customerPhone?: string,
 ): { status: OrderStatus; paymentStatus: PaymentStatus } {
+  // If not a Saudi number, it must be verified by Waiter
+  const isSaudi = customerPhone && (customerPhone.startsWith('+966') || customerPhone.startsWith('05'));
+  if (customerPhone && !isSaudi) {
+    return { status: OrderStatus.PENDING_VERIFICATION, paymentStatus: PaymentStatus.UNPAID }
+  }
+
+
   if (paymentMethod === PaymentMethod.CASH) {
     return kitchenStartsBeforePayment
       ? { status: OrderStatus.CONFIRMED, paymentStatus: PaymentStatus.CASH_PENDING }
@@ -205,6 +213,7 @@ export async function createOrder(
     const { status, paymentStatus } = initialStatusFor(
       input.paymentMethod,
       settings.kitchenStartsBeforePayment,
+      input.customerPhone
     )
 
     const orderNumber = await nextOrderNumber(restaurantId)
@@ -366,6 +375,7 @@ export async function staffCreateOrder(
     const { status, paymentStatus } = initialStatusFor(
       input.paymentMethod,
       settings.kitchenStartsBeforePayment,
+      (input as any).customerPhone
     )
 
     const orderNumber = await nextOrderNumber(restaurantId)

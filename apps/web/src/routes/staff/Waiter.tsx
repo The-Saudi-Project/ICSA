@@ -19,9 +19,12 @@ function useMinuteTick() {
 
 const NEXT_LABEL: Partial<Record<string, string>> = {
   [OrderStatus.COMPLETED]: 'Mark Delivered',
+  [OrderStatus.CASH_PENDING]: 'Verify',
+  [OrderStatus.CONFIRMED]: 'Verify',
 }
 
 function toneFor(status: string) {
+  if (status === OrderStatus.PENDING_VERIFICATION) return { color: 'var(--color-status-danger)', label: 'Verify Phone' }
   if (status === OrderStatus.READY) return { color: 'var(--color-status-success)', label: 'Ready to Serve' }
   if (status === OrderStatus.CONFIRMED) return { color: 'var(--color-status-info)', label: 'New' }
   return { color: 'var(--color-status-warning)', label: 'Cooking' }
@@ -49,10 +52,17 @@ export default function Waiter() {
       void queryClient.invalidateQueries({ queryKey: ['board', 'waiter'] })
     }
 
+    const handleCallWaiter = (payload: { tableLabel: string, tableId: string, time: string }) => {
+      showToast(`Table ${payload.tableLabel} is calling for a waiter!`, 'info')
+      // A chime can be added here if needed
+    }
+
     socket.on('order_updated', handleUpdated)
+    socket.on('call_waiter', handleCallWaiter)
 
     return () => {
       socket.off('order_updated', handleUpdated)
+      socket.off('call_waiter', handleCallWaiter)
     }
   }, [socket, isConnected, queryClient])
 
@@ -67,8 +77,13 @@ export default function Waiter() {
 
   const orders = data?.orders ?? []
   
-  // Waiters mainly care about READY. Let's sort READY first.
-  const sortedOrders = [...orders].sort((a, b) => {
+  const filteredOrders = orders.filter(o => 
+    !o.assignedWaiterId || o.assignedWaiterId === user?.id
+  )
+
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
+    if (a.status === OrderStatus.PENDING_VERIFICATION && b.status !== OrderStatus.PENDING_VERIFICATION) return -1
+    if (b.status === OrderStatus.PENDING_VERIFICATION && a.status !== OrderStatus.PENDING_VERIFICATION) return 1
     if (a.status === OrderStatus.READY && b.status !== OrderStatus.READY) return -1
     if (b.status === OrderStatus.READY && a.status !== OrderStatus.READY) return 1
     return new Date(a.placedAt).getTime() - new Date(b.placedAt).getTime()
@@ -139,12 +154,19 @@ export default function Waiter() {
             const [next] = allowedNextStatuses(order.status as OrderStatus, 'WAITER')
             
             const isReady = order.status === OrderStatus.READY
+            const isPendingVerification = order.status === OrderStatus.PENDING_VERIFICATION
+            const needsAction = isReady || isPendingVerification
+            
+            // For PENDING_VERIFICATION, next should be either CASH_PENDING or CONFIRMED
+            const nextAction = isPendingVerification 
+              ? allowedNextStatuses(order.status as OrderStatus, 'WAITER').find(s => s === OrderStatus.CASH_PENDING || s === OrderStatus.CONFIRMED)
+              : next
 
             return (
               <li key={order.id} className="ticket-enter">
                 <Card 
                   variant="glass" 
-                  className={`flex flex-col h-full overflow-hidden transition-all duration-500 shadow-xl border-t-[6px] relative group hover:-translate-y-1 hover:shadow-2xl ${isReady ? 'ring-2 ring-status-success/50 ring-offset-4 ring-offset-ground animate-pulse-slow' : 'opacity-70'}`}
+                  className={`flex flex-col h-full overflow-hidden transition-all duration-500 shadow-xl border-t-[6px] relative group hover:-translate-y-1 hover:shadow-2xl ${needsAction ? 'ring-2 ring-status-success/50 ring-offset-4 ring-offset-ground animate-pulse-slow' : 'opacity-70'}`}
                   style={{ borderTopColor: tone.color }}
                 >
                   <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
@@ -185,15 +207,15 @@ export default function Waiter() {
                       ))}
                     </ul>
 
-                    {next && isReady ? (
+                    {nextAction && needsAction ? (
                       <button
                         type="button"
-                        onClick={() => advance.mutate({ order, to: next })}
+                        onClick={() => advance.mutate({ order, to: nextAction as OrderStatus })}
                         disabled={advance.isPending}
                         className="mt-6 sm:mt-8 w-full h-14 sm:h-16 md:h-20 text-base sm:text-xl font-black text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all rounded-2xl border-none disabled:opacity-50 flex items-center justify-center gap-2 sm:gap-3"
                         style={{ background: tone.color }}
                       >
-                        {NEXT_LABEL[next] ?? next}
+                        {NEXT_LABEL[nextAction] ?? nextAction}
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                       </button>
                     ) : (

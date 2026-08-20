@@ -37,6 +37,7 @@ import { publicRouter } from './modules/public/public.routes.js'
 import { tableRouter } from './modules/tables/table.routes.js'
 import { appDashboardRouter, platformDashboardRouter } from './modules/dashboard/dashboard.routes.js'
 import { restaurantRouter } from './modules/restaurants/restaurant.routes.js'
+import { customerRouter } from './modules/customers/customer.routes.js'
 
 export function createApp(): Express {
   const app = express()
@@ -116,6 +117,7 @@ export function createApp(): Express {
   // Default fallback limiter for the rest
   v1.use(apiRateLimit)
   v1.use('/auth', authRouter)
+  v1.use('/customers', customerRouter)
   v1.use('/public', publicRouter) // customers: table session only, no login
   v1.use('/platform/dashboard', platformDashboardRouter) // platform dashboard
   v1.use('/platform', platformRouter) // us

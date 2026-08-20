@@ -4,7 +4,8 @@ import { Suspense, lazy } from 'react'
 
 import { getStaffUser } from './lib/staffApi.js'
 import { homeForRole, mayVisit } from './lib/roles.js'
-import NoTable from './routes/NoTable.js'
+
+const Landing = lazy(() => import('./routes/Landing.js'))
 
 const TableEntry = lazy(() => import('./routes/TableEntry.js'))
 const Menu = lazy(() => import('./routes/Menu.js'))
@@ -26,6 +27,7 @@ const AdminTables = lazy(() => import('./routes/staff/AdminTables.js'))
 const AdminSettings = lazy(() => import('./routes/staff/AdminSettings.js'))
 const AdminStaff = lazy(() => import('./routes/staff/AdminStaff.js'))
 const AdminHealth = lazy(() => import('./routes/staff/AdminHealth.js'))
+const AdminOtps = lazy(() => import('./routes/staff/AdminOtps.js'))
 const Platform = lazy(() => import('./routes/staff/Platform.js'))
 const PlatformTenantDetail = lazy(() => import('./routes/staff/PlatformTenantDetail.js'))
 const StaffLayout = lazy(() => import('./routes/staff/StaffLayout.js'))
@@ -63,7 +65,7 @@ export default function App() {
             </a>
               <ErrorBoundary>
                 <Routes>
-                  <Route path="/" element={<NoTable />} />
+                  <Route path="/" element={<Suspense fallback={<Fallback />}><Landing /></Suspense>} />
                   <Route path="/t/:token" element={<Suspense fallback={<Fallback />}><TableEntry /></Suspense>} />
                   <Route path="/menu" element={<Suspense fallback={<Fallback />}><Menu /></Suspense>} />
                   <Route path="/item/:id" element={<Suspense fallback={<Fallback />}><ItemDetail /></Suspense>} />
@@ -89,6 +91,7 @@ export default function App() {
                       <Route path="settings" element={<Suspense fallback={<Fallback />}><AdminSettings /></Suspense>} />
                       <Route path="tables" element={<Suspense fallback={<Fallback />}><AdminTables /></Suspense>} />
                       <Route path="staff" element={<Suspense fallback={<Fallback />}><AdminStaff /></Suspense>} />
+                      <Route path="otps" element={<Suspense fallback={<Fallback />}><AdminOtps /></Suspense>} />
                       <Route path="health" element={<Suspense fallback={<Fallback />}><AdminHealth /></Suspense>} />
                     </Route>
                     <Route path="/platform">

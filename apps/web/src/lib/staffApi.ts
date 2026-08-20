@@ -209,7 +209,9 @@ export interface StaffOrder {
   status: string
   paymentMethod: string
   paymentStatus: string
+  tableId?: string | null
   tableLabel?: string | null
+  assignedWaiterId?: string | null
   items: StaffOrderLine[]
   totals: { grandTotalHalalas: number; vatHalalas: number; subtotalHalalas: number }
   customerNote?: string | null

@@ -8,7 +8,7 @@
 
 import { createOrderSchema, exchangeTableTokenSchema, idempotencyKeySchema } from '@rw/shared'
 import { Router, type Request, type Response } from 'express'
-import { getContext } from '../../core/context.js'
+import { getContext, requireContext } from '../../core/context.js'
 import { badRequest, notFound } from '../../core/errors.js'
 import * as orderService from '../orders/order.service.js'
 import { requireTableSession } from '../../middleware/tableSession.js'
@@ -20,6 +20,8 @@ import * as reviewService from '../menu/review.service.js'
 import { RestaurantModel } from '../restaurants/restaurant.model.js'
 import { requireTenantId } from '../../core/tenant.js'
 import { z } from 'zod'
+import { TableModel } from '../tables/table.model.js'
+import { getIO } from '../../core/socket.js'
 
 export const publicRouter: Router = Router()
 
@@ -194,4 +196,23 @@ publicRouter.get('/restaurant/status', requireTableSession, async (_req: Request
   const restaurant = await RestaurantModel.findById(restaurantId).select('settings')
   res.setHeader('Cache-Control', 'no-store')
   res.status(200).json({ estimatedWaitMinutes: restaurant?.settings?.estimatedWaitMinutes ?? 15 })
+})
+
+/** Call waiter from table */
+publicRouter.post('/call-waiter', requireTableSession, async (_req: Request, res: Response) => {
+  const context = requireContext()
+  if (!context.tableId) {
+    throw badRequest('Table ID not found in session')
+  }
+
+  const table = await TableModel.findById(context.tableId)
+  if (!table) {
+    throw notFound('Table not found')
+  }
+
+  const io = getIO()
+  const payload = { tableLabel: table.label, tableId: table.id, time: new Date().toISOString() }
+  io.to(`restaurant_${context.restaurantId}`).emit('call_waiter', payload)
+
+  res.status(200).json({ success: true })
 })

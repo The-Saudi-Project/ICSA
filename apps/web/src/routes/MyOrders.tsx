@@ -9,10 +9,30 @@ export default function MyOrders() {
   const { t } = useI18n()
   const navigate = useNavigate()
 
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, error } = useQuery({
     queryKey: ['myOrders'],
     queryFn: fetchMyOrders,
+    retry: false
   })
+
+  // If unauthorized, show a prompt to login
+  if (error && (error as any).status === 401) {
+    return (
+      <div className="min-h-dvh bg-ground flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-surface border border-border rounded-2xl flex items-center justify-center mb-6 text-ink-soft">
+           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        <h2 className="text-h2 mb-2">Sign in to view orders</h2>
+        <p className="text-body text-ink-soft mb-8">You need to be signed in to see your past orders and receipts.</p>
+        <button 
+          onClick={() => void navigate('/')}
+          className="btn-primary"
+        >
+          Go to Home
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-dvh bg-ground transition-colors">
@@ -50,6 +70,10 @@ export default function MyOrders() {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-small font-bold text-ink-faint">Order #{order.orderNumber}</p>
+                      {/* Using any to bypass TS error because we added restaurantId populate in backend */}
+                      {(order as any).restaurantId && (
+                        <p className="text-xs font-bold text-ink-soft">{(order as any).restaurantId.name?.en || (order as any).restaurantId.name?.ar}</p>
+                      )}
                       <p className="text-body font-bold text-ink mt-1">
                         {order.items.length} item{order.items.length === 1 ? '' : 's'}
                       </p>

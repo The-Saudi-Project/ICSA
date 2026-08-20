@@ -38,7 +38,7 @@ export const createOrderSchema = z.object({
   customerPhone: z
     .string()
     .trim()
-    .regex(/^\+9665\d{8}$/, 'must be a Saudi mobile number in +9665XXXXXXXX form')
+    .regex(/^\+?[0-9\s-]{5,20}$/, 'must be a valid phone number')
     .optional(),
 })
 export type CreateOrderInput = z.infer<typeof createOrderSchema>
@@ -52,6 +52,7 @@ export type CreateOrderInput = z.infer<typeof createOrderSchema>
  */
 export const transitionOrderSchema = z.object({
   to: z.enum([
+    OrderStatus.CASH_PENDING,
     OrderStatus.CONFIRMED,
     OrderStatus.KITCHEN_ACCEPTED,
     OrderStatus.PREPARING,

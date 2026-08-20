@@ -48,6 +48,7 @@ async function raw<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: {
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
       ...(session ? { Authorization: `Bearer ${session.sessionToken}` } : {}),
+      ...(localStorage.getItem('customerToken') ? { 'X-Customer-Token': localStorage.getItem('customerToken')! } : {}),
       ...init.headers,
     },
   })
@@ -230,6 +231,7 @@ export function placeOrder(
       items,
       paymentMethod: 'CASH',
       ...(customerNote ? { customerNote } : {}),
+      ...(localStorage.getItem('customerPhone') ? { customerPhone: localStorage.getItem('customerPhone') } : {}),
     }),
   })
 }
@@ -237,7 +239,15 @@ export function placeOrder(
 export const fetchOrder = (publicId: string) =>
   api<{ order: CustomerOrder }>(`/public/orders/${publicId}`)
 
-export const fetchMyOrders = () => api<{ orders: CustomerOrder[] }>('/public/orders')
+export const fetchMyOrders = () => {
+  const token = localStorage.getItem('customerToken')
+  if (token) {
+    return api<{ orders: CustomerOrder[] }>('/customers/orders', {
+      headers: { 'X-Customer-Token': token }
+    })
+  }
+  return api<{ orders: CustomerOrder[] }>('/public/orders')
+}
 
 export const cancelOrder = (publicId: string) =>
   api<{ order: CustomerOrder }>(`/public/orders/${publicId}/cancel`, { method: 'POST' })
@@ -255,4 +265,18 @@ export const getReviews = (menuItemId: string) =>
 
 export const fetchRestaurantStatus = () =>
   api<{ estimatedWaitMinutes: number }>('/public/restaurant/status')
+
+/* ── customers ────────────────────────────────────────────────────────────── */
+
+export const requestOtp = (phone: string) =>
+  api<{ success: boolean }>('/customers/request-otp', {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+  })
+
+export const verifyOtp = (phone: string, code: string) =>
+  api<{ token: string }>('/customers/verify-otp', {
+    method: 'POST',
+    body: JSON.stringify({ phone, code }),
+  })
 

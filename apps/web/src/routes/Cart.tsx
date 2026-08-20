@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { SwipeableItem } from '../components/SwipeableItem.js'
 import { Price } from '../components/Price.js'
+import { PhoneVerificationModal } from '../components/PhoneVerificationModal.js'
 import { ApiError, placeOrder } from '../lib/api.js'
 import { cartTotal, clearCart, lineTotal, setQuantity, toOrderLines, useCart, type CartLine } from '../lib/cart.js'
 import { getSession } from '../lib/session.js'
@@ -20,7 +21,18 @@ export default function Cart() {
   const [placing, setPlacing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey)
+  const [showVerification, setShowVerification] = useState(false)
   const { t } = useI18n()
+
+  function handlePlaceOrderClick() {
+    if (placing || cart.length === 0) return
+    const customerPhone = localStorage.getItem('customerPhone')
+    if (!customerPhone) {
+      setShowVerification(true)
+    } else {
+      void submit()
+    }
+  }
 
   async function submit() {
     if (placing || cart.length === 0) return
@@ -122,7 +134,7 @@ export default function Cart() {
              <button
                type="button"
                disabled={placing}
-               onClick={() => void submit()}
+               onClick={handlePlaceOrderClick}
                className="flex-[2] py-4 font-bold text-white bg-accent hover:bg-accent-dim rounded-xl shadow-lg transition-colors disabled:opacity-50 relative overflow-hidden"
              >
                <span className="relative z-10 flex items-center justify-center gap-2">
@@ -139,6 +151,14 @@ export default function Cart() {
           ) : null}
         </div>
       </div>
+      <PhoneVerificationModal 
+        isOpen={showVerification} 
+        onClose={() => setShowVerification(false)} 
+        onVerified={() => {
+          setShowVerification(false)
+          void submit()
+        }} 
+      />
     </div>
   )
 }

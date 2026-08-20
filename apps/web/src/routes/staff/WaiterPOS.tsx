@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { fetchTables, fetchMenuItems, fetchCategories, staffCreateOrder } from '../../lib/staffApi.js'
+import { fetchTables, fetchMenuItems, fetchCategories, staffCreateOrder, getStaffUser } from '../../lib/staffApi.js'
 import { Card } from '../../components/ui/Card.js'
 import { money } from '../../lib/format.js'
 import { PaymentMethod } from '@rw/shared'
@@ -13,7 +13,9 @@ export default function WaiterPOS() {
   const { data: menuData } = useQuery({ queryKey: ['menuItems'], queryFn: fetchMenuItems })
   const { data: categoriesData } = useQuery({ queryKey: ['categories'], queryFn: fetchCategories })
 
-  const tables = tablesData?.tables ?? []
+  const user = getStaffUser()
+  const allTables = tablesData?.tables ?? []
+  const tables = allTables.filter(t => !t.assignedWaiterId || t.assignedWaiterId === user?.id)
   const items = menuData?.items ?? []
   const categories = categoriesData?.categories ?? []
 
