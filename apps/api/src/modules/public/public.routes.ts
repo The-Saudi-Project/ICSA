@@ -212,6 +212,10 @@ publicRouter.post('/call-waiter', requireTableSession, async (_req: Request, res
 
   const io = getIO()
   const payload = { tableLabel: table.label, tableId: table.id, time: new Date().toISOString() }
+  
+  table.needsWaiterAt = new Date()
+  await table.save()
+
   io.to(`restaurant_${context.restaurantId}`).emit('call_waiter', payload)
 
   res.status(200).json({ success: true })

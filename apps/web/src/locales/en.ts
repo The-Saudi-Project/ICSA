@@ -140,6 +140,10 @@ export const en = {
   startCooking: 'Start Cooking',
   markReady: 'Mark Ready',
   waitingCollection: 'Waiting for collection',
+  ready: 'Ready',
+  newOrder: 'New Order',
+  noActiveTables: 'No active tables',
+  waitingForOrders: 'Waiting for new orders...',
 
   // Cashier
   tillCashier: 'Till / Cashier',

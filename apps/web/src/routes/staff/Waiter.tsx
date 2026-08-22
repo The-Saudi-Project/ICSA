@@ -2,12 +2,13 @@ import { OrderStatus, allowedNextStatuses } from '@rw/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { fetchBoard, transitionOrder, getStaffUser, type StaffOrder } from '../../lib/staffApi.js'
+import { fetchBoard, transitionOrder, getStaffUser, type StaffOrder, fetchWaiterCalls, resolveWaiterCall } from '../../lib/staffApi.js'
 import { Card } from '../../components/ui/Card.js'
 import { SoundToggle } from '../../components/SoundToggle.js'
 import { useRestaurantSocket } from '../../lib/socket.js'
 import { useToast } from '../../components/ToastContext.js'
 import { useI18n } from '../../lib/i18n.js'
+import { playAlertBeep } from '../../lib/audio.js'
 
 function useMinuteTick() {
   const [, setTick] = useState(0)
@@ -34,11 +35,21 @@ export default function Waiter() {
   useMinuteTick()
   const queryClient = useQueryClient()
   const { showToast } = useToast()
-  const { locale } = useI18n()
+  const { t, locale } = useI18n()
 
   const { data, isPending, isError } = useQuery({
     queryKey: ['board', 'waiter'],
     queryFn: () => fetchBoard('waiter'),
+  })
+
+  const { data: callsData } = useQuery({
+    queryKey: ['waiterCalls'],
+    queryFn: fetchWaiterCalls,
+  })
+
+  const resolveCall = useMutation({
+    mutationFn: (tableId: string) => resolveWaiterCall(tableId),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['waiterCalls'] }),
   })
 
   const user = getStaffUser()
@@ -54,17 +65,24 @@ export default function Waiter() {
 
     const handleCallWaiter = (payload: { tableLabel: string, tableId: string, time: string }) => {
       showToast(`Table ${payload.tableLabel} is calling for a waiter!`, 'info')
-      // A chime can be added here if needed
+      playAlertBeep()
+      void queryClient.invalidateQueries({ queryKey: ['waiterCalls'] })
+    }
+
+    const handleCallResolved = () => {
+      void queryClient.invalidateQueries({ queryKey: ['waiterCalls'] })
     }
 
     socket.on('order_updated', handleUpdated)
     socket.on('call_waiter', handleCallWaiter)
+    socket.on('call_waiter_resolved', handleCallResolved)
 
     return () => {
       socket.off('order_updated', handleUpdated)
       socket.off('call_waiter', handleCallWaiter)
+      socket.off('call_waiter_resolved', handleCallResolved)
     }
-  }, [socket, isConnected, queryClient])
+  }, [socket, isConnected, queryClient, showToast])
 
   const advance = useMutation({
     mutationFn: ({ order, to }: { order: StaffOrder; to: OrderStatus }) =>
@@ -90,7 +108,7 @@ export default function Waiter() {
   })
 
   return (
-    <div className="surface-kiln min-h-dvh transition-colors relative overflow-hidden">
+    <div className="bg-ground min-h-dvh transition-colors relative overflow-hidden">
       {/* Decorative Orbs for Glassmorphism */}
       <div className="absolute top-[0%] left-[-10%] w-[800px] h-[800px] bg-status-success/5 blur-[150px] rounded-full pointer-events-none mix-blend-screen" />
       <div className="absolute bottom-[0%] right-[-10%] w-[600px] h-[600px] bg-accent/5 blur-[120px] rounded-full pointer-events-none mix-blend-screen" />
@@ -98,8 +116,8 @@ export default function Waiter() {
       <main className="px-6 py-10 md:p-12 max-w-[1920px] mx-auto animate-fade-in relative z-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
            <div>
-             <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-none text-ink drop-shadow-sm">Waiter Dashboard</h1>
-             <p className="text-xl font-medium text-ink-soft mt-3">Active Tickets: <strong className="text-ink font-bold">{orders.length}</strong></p>
+             <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-none text-ink drop-shadow-sm">{t('waiterDashboard') ?? 'Waiter Dashboard'}</h1>
+             <p className="text-xl font-medium text-ink-soft mt-3">{t('activeTickets') ?? 'Active Tickets'}: <strong className="text-ink font-bold">{orders.length}</strong></p>
            </div>
            
            <div className="flex items-center gap-4">
@@ -109,16 +127,52 @@ export default function Waiter() {
                 className="bg-accent hover:bg-accent-bright text-white rounded-2xl px-8 py-4 font-black shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all uppercase tracking-widest text-sm flex items-center gap-2"
              >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                New Order
+                {t('newOrder') ?? 'New Order'}
              </Link>
              <div className="flex gap-4">
                 <div className="bg-surface-strong/80 backdrop-blur-md rounded-2xl px-6 py-3 border border-border/50 shadow-sm flex items-center gap-3">
                    <div className="w-3 h-3 rounded-full bg-status-success animate-pulse shadow-[0_0_10px_var(--color-status-success)]"></div>
-                   <span className="font-bold text-ink text-sm tracking-wider uppercase">Ready: {orders.filter(o => o.status === OrderStatus.READY).length}</span>
+                   <span className="font-bold text-ink text-sm tracking-wider uppercase">{(t('ready') ?? 'Ready').toUpperCase()}: {orders.filter(o => o.status === OrderStatus.READY).length}</span>
                 </div>
              </div>
            </div>
         </div>
+
+        {/* Active Waiter Calls */}
+        {callsData?.calls && callsData.calls.length > 0 && (
+          <div className="mb-12 animate-slide-up">
+            <h2 className="text-3xl font-black text-ink mb-6 flex items-center gap-3">
+              <span className="w-4 h-4 rounded-full bg-status-danger animate-pulse shadow-[0_0_10px_var(--color-status-danger)]"></span>
+              Tables Calling
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {callsData.calls.map((call) => (
+                <Card key={call._id} variant="glass" className="p-6 border-l-4 border-l-status-danger bg-status-danger-wash shadow-lg flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-2xl font-black text-status-danger tracking-tight mb-2">Table {call.label}</h3>
+                    <p className="text-sm font-bold text-ink-soft uppercase tracking-widest">Needs assistance</p>
+                  </div>
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      onClick={() => resolveCall.mutate(call._id)}
+                      disabled={resolveCall.isPending}
+                      className="flex-1 bg-status-success text-white py-3 rounded-xl font-bold hover:bg-status-success/90 transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      Attended
+                    </button>
+                    <button
+                      onClick={() => resolveCall.mutate(call._id)}
+                      disabled={resolveCall.isPending}
+                      className="flex-1 bg-surface-strong text-ink border border-border py-3 rounded-xl font-bold hover:bg-surface-hover transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      Declined
+                    </button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {isPending ? (
           <div className="flex items-center gap-4 text-ink-soft py-10">
@@ -143,8 +197,8 @@ export default function Waiter() {
                 <line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" />
               </svg>
             </div>
-            <h2 className="text-4xl font-bold text-ink-soft">No active tables</h2>
-            <p className="mt-4 text-xl font-medium text-ink-faint">Waiting for new orders...</p>
+            <h2 className="text-4xl font-bold text-ink-soft">{t('noActiveTables') ?? 'No active tables'}</h2>
+            <p className="mt-4 text-xl font-medium text-ink-faint">{t('waitingForOrders') ?? 'Waiting for new orders...'}</p>
           </div>
         ) : null}
 

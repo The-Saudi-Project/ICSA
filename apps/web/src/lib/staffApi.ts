@@ -253,6 +253,21 @@ export const staffCreateOrder = (body: unknown, idempotencyKey: string) =>
     body: JSON.stringify(body),
   })
 
+export type WaiterCall = {
+  _id: string
+  label: string
+  status: string
+  needsWaiterAt: string
+}
+
+export const fetchWaiterCalls = () =>
+  staffApi<{ calls: WaiterCall[] }>('/app/orders/waiter-calls')
+
+export const resolveWaiterCall = (id: string) =>
+  staffApi<{ success: true }>(`/app/orders/${id}/resolve-call`, {
+    method: 'POST',
+  })
+
 export const confirmCash = (id: string) =>
   staffApi<{ order: StaffOrder }>(`/app/orders/${id}/confirm-cash`, { method: 'POST' })
 

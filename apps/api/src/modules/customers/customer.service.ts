@@ -16,37 +16,26 @@ export async function generateOtp(phone: string): Promise<string> {
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<{ token: string }> {
-  const otp = await OtpCodeModel.findOne({
+  const otp = await OtpCodeModel.findOneAndUpdate({
     phone,
     code,
     usedAt: { $exists: false },
     expiresAt: { $gt: new Date() }
+  }, {
+    $set: { usedAt: new Date() }
   })
 
   if (!otp) {
     throw badRequest('Invalid or expired OTP')
   }
 
-  // Mark as used
-  otp.usedAt = new Date()
-  await otp.save()
-
-  // Find or create customer — Mongoose 8 types findOneAndUpdate as T|null even
-  // with upsert:true, so we use a two-step pattern that is guaranteed to return
-  // a document and avoids the duplicate-key race condition.
-  let customer = await CustomerModel.findOne({ phone })
-  if (!customer) {
-    try {
-      customer = await CustomerModel.create({ phone })
-    } catch (err: unknown) {
-      // Another request beat us to the insert (duplicate key). Fetch the winner.
-      if (typeof err === 'object' && err !== null && (err as { code?: number }).code === 11000) {
-        customer = await CustomerModel.findOne({ phone })
-      } else {
-        throw err
-      }
-    }
-  }
+  const customerDoc = await CustomerModel.findOneAndUpdate(
+    { phone },
+    { $setOnInsert: { phone } },
+    { upsert: true, new: true }
+  )
+  
+  const customer = customerDoc || await CustomerModel.findOne({ phone })
 
   if (!customer) {
     throw new Error('Failed to create or find customer record')

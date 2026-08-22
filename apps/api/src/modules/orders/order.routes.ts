@@ -23,14 +23,43 @@ import { z } from 'zod'
 import { requireAuth } from '../../middleware/auth.js'
 import { requireRole, requireStaff } from '../../middleware/rbac.js'
 import { validate } from '../../middleware/validate.js'
-import { badRequest } from '../../core/errors.js'
+import { badRequest, notFound } from '../../core/errors.js'
 import * as orderService from './order.service.js'
+import { TableModel } from '../tables/table.model.js'
+import { requireTenantId } from '../../core/tenant.js'
+import { getIO } from '../../core/socket.js'
 
 export const orderRouter: Router = Router()
 
 orderRouter.use(requireAuth, requireStaff)
 
 const idParamsSchema = z.object({ id: objectIdSchema })
+
+orderRouter.get('/waiter-calls', async (_req: Request, res: Response) => {
+  const restaurantId = requireTenantId()
+  const tables = await TableModel.find({ 
+    restaurantId, 
+    needsWaiterAt: { $ne: null } 
+  }).select('label needsWaiterAt status').sort({ needsWaiterAt: 1 })
+  
+  res.setHeader('Cache-Control', 'no-store')
+  res.status(200).json({ calls: tables })
+})
+
+orderRouter.post('/:id/resolve-call', validate({ params: idParamsSchema }), async (req: Request, res: Response) => {
+  const restaurantId = requireTenantId()
+  const table = await TableModel.findOneAndUpdate(
+    { _id: req.params.id, restaurantId },
+    { $set: { needsWaiterAt: null } },
+    { new: true }
+  )
+  if (!table) throw notFound('Table not found')
+
+  const io = getIO()
+  io.to(`restaurant_${restaurantId}`).emit('call_waiter_resolved', { tableId: table.id })
+
+  res.status(200).json({ success: true })
+})
 
 const listQuerySchema = z.object({
   /** `board=kitchen|cashier|waiter` is a shortcut for the status set each screen shows. */

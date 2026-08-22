@@ -142,6 +142,10 @@ export const ar: Translations = {
   startCooking: 'بدء الطبخ',
   markReady: 'تحديد كجاهز',
   waitingCollection: 'في انتظار الاستلام',
+  ready: 'جاهز',
+  newOrder: 'طلب جديد',
+  noActiveTables: 'لا توجد طاولات نشطة',
+  waitingForOrders: 'في انتظار طلبات جديدة...',
 
   // Cashier
   tillCashier: 'الكاشير',

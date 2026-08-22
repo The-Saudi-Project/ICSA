@@ -40,6 +40,7 @@ const tableSchema = new Schema(
 
     status: { type: String, enum: Object.values(TableStatus), default: TableStatus.ACTIVE },
     assignedWaiterId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    needsWaiterAt: { type: Date, default: null },
   },
   { timestamps: true },
 )
