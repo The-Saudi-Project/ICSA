@@ -28,6 +28,10 @@ Sara sits down at table 12. On the table is a small card with an NFC chip and a 
    refreshing.
 9. *(Phase 2)* After the meal, an SMS invites her to rate the experience or leave a Google review.
 
+**If she needs a person**, one tap on *Call waiter* puts her table on the waiter's screen. The
+call stays there until a waiter clears it, so it cannot be missed because nobody happened to be
+looking when it arrived.
+
 She never created an account, never installed anything, and never typed a table number.
 
 ---
@@ -41,6 +45,11 @@ kitchen sees it. That tap is permanently recorded with the cashier's name and th
 **Kitchen screen** — a board of confirmed orders showing items, quantities, and modifiers in
 large text. Accept → preparing → ready. Nothing about payments or prices appears here; the
 kitchen does not need it and cannot change it.
+
+**Waiter screen** — the orders that are ready to carry to a table, and any table that has pressed
+*Call waiter*, oldest call first. A call arrives with a sound the moment it is made, and the screen
+re-checks every few seconds as well, so a dropped connection cannot swallow one. Clearing a call
+clears it for every waiter at once.
 
 **Owner/manager dashboard** — an overview screen showing today's takings, today's order count,
 how many orders are live right now, and the size of the team. "Today" means the Saudi calendar

@@ -1,4 +1,5 @@
 import { CustomerModel, OtpCodeModel } from './customer.model.js'
+import { trusted } from 'mongoose'
 import { randomInt } from 'node:crypto'
 import { badRequest } from '../../core/errors.js'
 
@@ -16,11 +17,17 @@ export async function generateOtp(phone: string): Promise<string> {
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<{ token: string }> {
+  // `trusted()` because `sanitizeFilter` is on globally: a bare `$exists` or
+  // `$gt` is rewritten to `{ $eq: { ... } }`, which Mongoose then tries to cast
+  // to a Date — a 500 on every verification attempt.
+  //
+  // No `new: true`: claiming the code and reading it back in one atomic step is
+  // what stops the same OTP being spent twice by two concurrent requests.
   const otp = await OtpCodeModel.findOneAndUpdate({
     phone,
     code,
-    usedAt: { $exists: false },
-    expiresAt: { $gt: new Date() }
+    usedAt: trusted({ $exists: false }),
+    expiresAt: trusted({ $gt: new Date() })
   }, {
     $set: { usedAt: new Date() }
   })

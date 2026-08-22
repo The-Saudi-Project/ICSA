@@ -19,6 +19,7 @@ import {
   idempotencyKeySchema,
 } from '@rw/shared'
 import { Router, type Request, type Response } from 'express'
+import { trusted } from 'mongoose'
 import { z } from 'zod'
 import { requireAuth } from '../../middleware/auth.js'
 import { requireRole, requireStaff } from '../../middleware/rbac.js'
@@ -26,8 +27,9 @@ import { validate } from '../../middleware/validate.js'
 import { badRequest, notFound } from '../../core/errors.js'
 import * as orderService from './order.service.js'
 import { TableModel } from '../tables/table.model.js'
-import { requireTenantId } from '../../core/tenant.js'
+import { requireTenantId, tenantRepo } from '../../core/tenant.js'
 import { getIO } from '../../core/socket.js'
+import { logger } from '../../core/logger.js'
 
 export const orderRouter: Router = Router()
 
@@ -35,34 +37,49 @@ orderRouter.use(requireAuth, requireStaff)
 
 const idParamsSchema = z.object({ id: objectIdSchema })
 
+/**
+ * Tables whose customer has pressed "call waiter", oldest first.
+ *
+ * `trusted()` is mandatory. `sanitizeFilter` is on globally, so a bare
+ * `{ $ne: null }` is rewritten to `{ $eq: { $ne: null } }` and Mongoose then
+ * tries to cast that object to a Date — the CastError that made this route a
+ * 500 in production. A per-query `{ sanitizeFilter: false }` does **not** turn
+ * the rewrite off: `Query.prototype._castConditions` reads the connection
+ * option, then the global one, and only falls back to the query option when
+ * neither is set — and ours is set globally in `db/mongoose.ts`.
+ */
 orderRouter.get('/waiter-calls', async (_req: Request, res: Response) => {
-  const restaurantId = requireTenantId()
-  const tables = await TableModel.find(
-    { restaurantId, needsWaiterAt: { $ne: null } },
-    null,
-    { sanitizeFilter: false }
+  const tables = await tenantRepo(TableModel).find(
+    { needsWaiterAt: trusted({ $ne: null }) },
+    { sort: { needsWaiterAt: 1 }, select: 'label needsWaiterAt status' },
   )
-    .select('label needsWaiterAt status')
-    .sort({ needsWaiterAt: 1 })
-  
+
   res.setHeader('Cache-Control', 'no-store')
   res.status(200).json({ calls: tables })
 })
 
-orderRouter.post('/:id/resolve-call', validate({ params: idParamsSchema }), async (req: Request, res: Response) => {
-  const restaurantId = requireTenantId()
-  const table = await TableModel.findOneAndUpdate(
-    { _id: req.params.id, restaurantId },
-    { $set: { needsWaiterAt: null } },
-    { new: true }
-  )
-  if (!table) throw notFound('Table not found')
+orderRouter.post(
+  '/:id/resolve-call',
+  validate({ params: idParamsSchema }),
+  async (req: Request, res: Response) => {
+    const restaurantId = requireTenantId()
 
-  const io = getIO()
-  io.to(`restaurant_${restaurantId}`).emit('call_waiter_resolved', { tableId: table.id })
+    // Another tenant's table id resolves to null here, which becomes the same
+    // 404 as an id that does not exist anywhere.
+    const table = await tenantRepo(TableModel).findByIdAndUpdate(req.params['id'], {
+      $set: { needsWaiterAt: null },
+    })
+    if (!table) throw notFound('Table not found')
 
-  res.status(200).json({ success: true })
-})
+    try {
+      getIO().to(`restaurant_${restaurantId}`).emit('call_waiter_resolved', { tableId: table.id })
+    } catch (err) {
+      logger.warn({ err }, 'failed to emit call_waiter_resolved')
+    }
+
+    res.status(200).json({ success: true })
+  },
+)
 
 const listQuerySchema = z.object({
   /** `board=kitchen|cashier|waiter` is a shortcut for the status set each screen shows. */

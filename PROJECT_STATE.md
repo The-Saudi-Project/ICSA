@@ -68,8 +68,8 @@ typecheck, lint, `test:security` (206 pass) and the full suite:
 (Step 8) except the menu image upload interface.
 
 `npm run build`, `npm run typecheck`, `npm run lint`, `npm test` and `npm run test:security` are
-all green as of **2026-08-11** — **270 API tests + 43 shared tests passing, 0 failing**, of which
-**202 are the security suite**.
+all green as of **2026-08-22** — **282 API tests + 43 shared tests passing, 0 failing**, of which
+**210 are the security suite**.
 
 > **2026-08-11 — read this before trusting §4 or `DESIGN.md`.** Between the 2026-08-09 handoff and
 > this session, work landed **outside a tracked agent session**: the design system was replaced,
@@ -904,11 +904,38 @@ These are deliberate. **Do not reverse them without explicit product-owner appro
 | Every table URL and QR pointed at a dead port | **High** (NFC tags unusable) | ✅ fixed | `PUBLIC_APP_URL` defaulted to `http://localhost:5173`, Vite's default port — but `apps/web/vite.config.ts` pins the dev server to **5174**. Scanning a tag gave `ERR_FAILED`. The wrong port was in four places at once: `config/env.ts` (both `PUBLIC_APP_URL` and `CORS_ORIGIN`), `scripts/dev-standalone.mts`, `.env.example`, and `.claude/launch.json`. All now 5174, each with a comment naming `vite.config.ts` as the source of truth. **No token rotation was needed** — the URL is rebuilt from `PUBLIC_APP_URL` on every read, so existing tables were correct the moment the API restarted |
 | The CORS test hardcoded a port | Low | ✅ fixed | `app.test.ts` asserted `http://localhost:5173` literally, so it failed the moment the port moved. Now reads `env.corsOrigins[0]`. A test that must be edited whenever configuration changes is testing the constant, not the behaviour |
 
+### Fixed 2026-08-22 — the waiter-call board, and three more instances of the same defect
+
+Reported from production (Render logs): every poll of the waiter screen returned 500 with
+`CastError: Cast to date failed for value "{ '$ne': null }" … at path "needsWaiterAt"`. The
+cause is the convention from Step 6, missed four times: **`sanitizeFilter` is on globally, so a
+deliberate operator must be wrapped in `mongoose.trusted()`**. Without it the operator object is
+rewritten to `{ $eq: { … } }` and Mongoose then tries to cast that object to the path's type —
+on an untyped path the query silently matches nothing, on a typed one it is a 500.
+
+Four earlier attempts had failed because they treated the symptom: `$type: 'date'`, then
+`$expr` (which `sanitizeFilter` rejects outright), then `$gt: new Date(0)`, then a per-query
+`{ sanitizeFilter: false }`. **The per-query option cannot work**: `Query.prototype._castConditions`
+reads the connection option, then the global one, and only falls back to the query option when
+neither is set — and ours is set globally in `db/mongoose.ts`. Verified against the installed
+Mongoose 8.24.2 source, not from memory.
+
+| Bug | Severity | Status | Notes |
+|---|---|---|---|
+| `GET /app/orders/waiter-calls` returned 500 on every poll | **High** (feature unusable) | ✅ fixed | The reported bug. Now `tenantRepo(TableModel).find({ needsWaiterAt: trusted({ $ne: null }) })`, which also puts the route back on the tenant repo instead of calling the model directly. New `tests/security/waiter-call.test.ts` — all four cases fail against the old code |
+| `POST /customers/verify-otp` returned 500 on every attempt | **High** | ✅ fixed | Same defect on `usedAt: { $exists: false }` and `expiresAt: { $gt: new Date() }`, both on Date paths. OTP sign-in could never have succeeded |
+| `GET /app/menu/items/search` returned 500 on every search | Medium | ✅ fixed | Same defect on four `$regex` clauses inside `$or`; the cast failure was to String rather than Date |
+| `GET /public/orders?cursor=…` returned 500 whenever a cursor was sent | Medium | ✅ fixed | Same defect on `createdAt: { $lt: … }`. Only the second page of a customer's order list was affected, which is why it went unnoticed |
+| `POST /public/call-waiter` bypassed tenant scoping | Medium | ✅ fixed | It read the table with `.setOptions({ unscoped: true })` — the audited platform-admin escape hatch — in a customer-facing route. The tenant is already known from the verified table session, so it is now an ordinary `tenantRepo` write, and a single `findOneAndUpdate` rather than read-modify-write |
+| A Socket.IO failure could 500 a customer's waiter call | Low | ✅ fixed | The three waiter-call emits called `getIO()` unguarded, unlike every other emit in the codebase. Now wrapped in the same `try/catch` + `logger.warn`: the flag is already persisted and the waiter screen also polls, so a realtime hiccup must not fail the request |
+| `createOrder` read the table with `unscoped()` | Low | ✅ fixed | Convention drift, not a leak — the id came from the verified session. The tenant is established two lines above, so it is now `tenantRepo(TableModel, restaurantId).findById(...)`. The three `unscoped()` table lookups left are the legitimate ones, where the token or the session is what establishes tenancy |
+
 ### Open
 
 | Bug | Severity | Status | Notes |
 |---|---|---|---|
 | A cashier could open `/admin/*` in the browser | Medium | ✅ **fixed 2026-08-12** | The client route guard checked only platform-versus-restaurant; the per-surface guards from Step 7b were lost in the redesign, so typing `/admin/menu` rendered the admin interface to any signed-in staff member. **Nothing leaked** — every admin route is `requireRestaurantAdmin` and returned 403, which is why the screen was empty. Fixed with a single `mayVisit()` table in `lib/roles.ts` consulted by both the route guard and the sidebar, so a link can never appear for a surface the guard refuses. The sidebar was also offering Kitchen Display to cashiers. New `tests/security/admin-surface.test.ts` walks all 19 admin endpoints as cashier, kitchen and platform admin |
+| The `/customers/*` module is not safe to ship as written | **High** | **open — needs a product decision (raised 2026-08-22)** | Found while sweeping for the `sanitizeFilter` defect; **not changed, because it is a security and data-model decision, not an implementation detail.** Three things: (1) `GET /customers/orders` authenticates with `x-customer-token`, which is the customer's **Mongo `_id`** — a bearer credential that is not random, not hashed, never expires and cannot be revoked; (2) the same route then queries `OrderModel.find({ customerPhone })` with no tenant filter, so it both intends to cross tenants and, because of the tenant guard, throws `TenantScopeError` → 500 today; (3) `GET /customers/mock-otps` returns live OTP codes to any OWNER, which is the one thing `CLAUDE.md` says never to do with an OTP. Suggested direction: a real signed customer token with an expiry, orders scoped per restaurant, and the mock-OTP screen behind a dev-only flag |
 | Kitchen staff cannot edit stock | Medium | **open — needs a product decision** | The request on 2026-08-12 was "editable by admin **or kitchen staff**", but the chosen location was the admin item editor, which lives behind `/admin` and kitchen roles cannot reach. So today only OWNER and MANAGER can set a portion count. The fix is small and in two parts: add `Role.KITCHEN` to the item-update route (or a narrower stock-only route, which is safer — the full editor also changes prices), and give the kitchen surface a screen that reaches it. `stock-security.test.ts` pins the current behaviour with a test named for this gap, so flipping it is deliberate |
 
 ---
@@ -932,7 +959,7 @@ These are deliberate. **Do not reverse them without explicit product-owner appro
 
 ## 18. Tests
 
-Last run: **2026-08-12 — 270 API + 43 shared passed, 0 failed.** Security suite: **202 across 10
+Last run: **2026-08-22 — 282 API + 43 shared passed, 0 failed.** Security suite: **210 across 11
 files.**
 
 ```
@@ -967,6 +994,12 @@ files.**
                                                   PLATFORM_ADMIN role guard, dashboard RBAC,
                                                   staff disable + session revocation + re-enable)
 @rw/shared  order state machine       12 passed  (terminal freeze, role table, illegal moves)
+@rw/api     SECURITY waiter calls      4 passed  (NEW 2026-08-22 — the board does not 500, the
+                                                  call clears, one tenant never sees another's
+                                                  call, and a foreign table id is a 404)
+@rw/api     query operators            4 passed  (NEW 2026-08-22 — every deliberate operator
+                                                  survives sanitizeFilter: menu search, OTP
+                                                  verify + replay + expiry, order cursor)
 ```
 
 Mandatory tenant-isolation matrix from the brief:
@@ -1129,6 +1162,69 @@ AI recommendations · demand forecasting · ERP integrations · enterprise SSO �
 ---
 
 ## 24. Last Session Summary
+
+```
+Date:      2026-08-22
+Session:   Production 500 on the waiter-call board — and the three routes carrying the
+           same defect
+```
+
+**What was reported.** The Render log showed `GET /api/v1/app/orders/waiter-calls` answering 500
+with `CastError: Cast to date failed for value "{ '$ne': null }" … at path "needsWaiterAt"`,
+every ten seconds, because the waiter screen polls.
+
+**Why the four previous attempts did not fix it.** Each treated the symptom rather than the
+cause. The cause is the Step 6 convention: `sanitizeFilter` is on globally, so `{ $ne: null }`
+is rewritten to `{ $eq: { $ne: null } }` and Mongoose casts that object to a Date. The last
+attempt passed `{ sanitizeFilter: false }` on the query, which **cannot** work —
+`Query.prototype._castConditions` (Mongoose 8.24.2, read in `node_modules`, not recalled) checks
+the connection option, then the global one, and only consults the query option when neither is
+set. The fix is one word: `trusted()`.
+
+**The same mistake was in three more places**, found by sweeping every filter in `apps/api/src`
+for an unwrapped operator. All three were live 500s nobody had reported: `POST
+/customers/verify-otp` (so OTP sign-in has never worked), `GET /app/menu/items/search`, and
+`GET /public/orders` whenever a pagination cursor was sent. All four are now wrapped and covered
+by tests that fail against the old code.
+
+**Two things fixed alongside, both in the same routes.** `POST /public/call-waiter` was reading
+the table through `.setOptions({ unscoped: true })` — the audited platform-admin escape hatch —
+in a customer-facing route; the tenant is already known from the verified table session, so it is
+now an ordinary `tenantRepo` write and a single `findOneAndUpdate` instead of read-modify-write.
+And the three waiter-call Socket.IO emits called `getIO()` unguarded, so a realtime failure would
+have 500'd a customer pressing "call waiter"; they now use the same `try/catch` + `logger.warn`
+as every other emit.
+
+**One more `unscoped()` removed.** `createOrder` read the table with the platform-admin escape
+hatch even though the tenant was already established two lines above; it is now
+`tenantRepo(TableModel, restaurantId).findById(...)`. The three remaining `unscoped()` table
+lookups are the legitimate ones — in each of them the token or the session is what establishes
+tenancy, so there is no tenant to scope by yet.
+
+**Raised, deliberately not changed:** the `/customers/*` module is not safe to ship as written —
+the customer's Mongo `_id` is used as a bearer token, `GET /customers/orders` is cross-tenant by
+construction (and 500s today on the tenant guard), and `GET /customers/mock-otps` hands live OTP
+codes to any owner. That is a security and data-model decision, so it is written up in §16 Open
+and needs the product owner's call.
+
+**Files changed** — `modules/orders/order.routes.ts`, `modules/public/public.routes.ts`,
+`modules/customers/customer.service.ts`, `modules/menu/menu.service.ts`,
+`modules/orders/order.service.ts`, `scripts/check-indexes.mts`, plus new
+`tests/security/waiter-call.test.ts` and `tests/query-operators.test.ts`.
+
+**Tests** — `npm run typecheck`, `npm run lint`, `npm test` (282 API + 43 shared),
+`npm run test:security` (210) and `npm run build` all green. The new waiter-call tests were
+confirmed to fail when the fix is reverted.
+
+**No new index.** The waiter board sorts in memory on purpose: a restaurant has tens of tables,
+and an index on a column that is null for nearly every row would earn nothing. The query shape is
+registered in `scripts/check-indexes.mts` so the next `indexes:check` run reports on it.
+
+**Next action** — decide what to do about the `/customers/*` module (§16 Open).
+
+---
+
+### Previous session
 
 ```
 Date:      2026-08-12

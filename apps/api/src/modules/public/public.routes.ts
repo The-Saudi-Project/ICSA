@@ -18,7 +18,8 @@ import * as menuService from '../menu/menu.service.js'
 import * as tableService from '../tables/table.service.js'
 import * as reviewService from '../menu/review.service.js'
 import { RestaurantModel } from '../restaurants/restaurant.model.js'
-import { requireTenantId } from '../../core/tenant.js'
+import { requireTenantId, tenantRepo } from '../../core/tenant.js'
+import { logger } from '../../core/logger.js'
 import { z } from 'zod'
 import { TableModel } from '../tables/table.model.js'
 import { getIO } from '../../core/socket.js'
@@ -198,25 +199,40 @@ publicRouter.get('/restaurant/status', requireTableSession, async (_req: Request
   res.status(200).json({ estimatedWaitMinutes: restaurant?.settings?.estimatedWaitMinutes ?? 15 })
 })
 
-/** Call waiter from table */
+/**
+ * Call the waiter to this table.
+ *
+ * The table and the tenant come from the verified session, never from the body,
+ * so this is an ordinary tenant-scoped write: `tenantRepo`, not `unscoped()`.
+ * A single `findOneAndUpdate` also removes the read-modify-write race between
+ * this and the waiter screen resolving the call.
+ */
 publicRouter.post('/call-waiter', requireTableSession, async (_req: Request, res: Response) => {
   const context = requireContext()
   if (!context.tableId) {
     throw badRequest('Table ID not found in session')
   }
 
-  const table = await TableModel.findById(context.tableId).setOptions({ unscoped: true })
+  const table = await tenantRepo(TableModel).findByIdAndUpdate(context.tableId, {
+    $set: { needsWaiterAt: new Date() },
+  })
   if (!table) {
     throw notFound('Table not found')
   }
 
-  const io = getIO()
-  const payload = { tableLabel: table.label, tableId: table.id, time: new Date().toISOString() }
-  
-  table.needsWaiterAt = new Date()
-  await table.save()
-
-  io.to(`restaurant_${context.restaurantId}`).emit('call_waiter', payload)
+  // A realtime hiccup must not fail the customer's request: the waiter screen
+  // also polls, and the flag is already persisted.
+  try {
+    getIO()
+      .to(`restaurant_${context.restaurantId}`)
+      .emit('call_waiter', {
+        tableLabel: table.label,
+        tableId: table.id,
+        time: (table.needsWaiterAt ?? new Date()).toISOString(),
+      })
+  } catch (err) {
+    logger.warn({ err }, 'failed to emit call_waiter')
+  }
 
   res.status(200).json({ success: true })
 })

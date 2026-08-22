@@ -188,7 +188,11 @@ export async function createOrder(
   try {
     const [restaurant, table] = await Promise.all([
       RestaurantModel.findById(restaurantId),
-      TableModel.findOne({ _id: context.tableId }).setOptions({ unscoped: true }),
+      // The tenant is already established here, so this is a scoped read, not
+      // one of the audited `unscoped()` cases. (The genuine ones are in
+      // `table.service.ts`, where the token or session is what establishes
+      // tenancy in the first place.)
+      tenantRepo(TableModel, restaurantId).findById(context.tableId),
     ])
     if (!restaurant) throw notFound('Restaurant not found')
 
@@ -462,7 +466,9 @@ export async function listOrdersForSession(options?: { cursor?: string; limit?: 
   
   const query: Record<string, unknown> = { tableSessionId: sessionId }
   if (options?.cursor) {
-    query.createdAt = { $lt: new Date(options.cursor) }
+    // `trusted()` for the same reason as in `listOrders` below: without it the
+    // cursor becomes `{ $eq: { $lt: date } }` and the request 500s.
+    query.createdAt = trusted({ $lt: new Date(options.cursor) })
   }
 
   const orders = await tenantRepo(OrderModel).find(

@@ -8,6 +8,7 @@
  */
 
 import type { CreateCategoryInput, CreateMenuItemInput } from '@rw/shared'
+import { trusted } from 'mongoose'
 import { writeAudit } from '../../core/audit.js'
 import { badRequest, conflict, notFound } from '../../core/errors.js'
 import { tenantRepo } from '../../core/tenant.js'
@@ -413,12 +414,15 @@ export async function searchItems(query: string): Promise<MenuItemView[]> {
   const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const regex = new RegExp(safeQuery, 'i')
 
+  // `trusted()` because `sanitizeFilter` is on globally and would otherwise
+  // rewrite each `$regex` into `{ $eq: { $regex: ... } }` — Mongoose then casts
+  // that object to a string and the search route 500s.
   const items = await repo.find({
     $or: [
-      { 'name.en': { $regex: regex } },
-      { 'name.ar': { $regex: regex } },
-      { 'description.en': { $regex: regex } },
-      { 'description.ar': { $regex: regex } }
+      { 'name.en': trusted({ $regex: regex }) },
+      { 'name.ar': trusted({ $regex: regex }) },
+      { 'description.en': trusted({ $regex: regex }) },
+      { 'description.ar': trusted({ $regex: regex }) }
     ]
   }, { limit: 50 })
 

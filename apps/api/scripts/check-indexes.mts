@@ -101,6 +101,17 @@ const SHAPES: Shape[] = [
     sort: { label: 1 },
   },
   {
+    // The waiter screen polls this every ten seconds. The equality rides the
+    // { restaurantId, label } index; the sort is done in memory on purpose —
+    // a restaurant has tens of tables, and an index on a field that is null for
+    // almost every document would earn nothing.
+    name: 'waiter call board',
+    collection: 'tables',
+    filter: { restaurantId: oid(), needsWaiterAt: { $ne: null } },
+    sort: { needsWaiterAt: 1 },
+    scanIsFine: 'tens of tables per restaurant; the in-memory sort is trivial',
+  },
+  {
     name: 'login by email',
     collection: 'users',
     filter: { email: 'someone@example.test' },
