@@ -53,6 +53,26 @@ customerRouter.get(
   }
 )
 
+customerRouter.delete(
+  '/mock-otps',
+  requireAuth,
+  requireRole(Role.OWNER, Role.PLATFORM_ADMIN),
+  async (_req: Request, res: Response) => {
+    await customerService.deleteAllOtps()
+    res.status(204).end()
+  }
+)
+
+customerRouter.delete(
+  '/mock-otps/:id',
+  requireAuth,
+  requireRole(Role.OWNER, Role.PLATFORM_ADMIN),
+  async (req: Request, res: Response) => {
+    await customerService.deleteOtp(req.params.id)
+    res.status(204).end()
+  }
+)
+
 customerRouter.get(
   '/orders',
   async (req: Request, res: Response) => {

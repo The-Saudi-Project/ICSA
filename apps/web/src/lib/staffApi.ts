@@ -689,3 +689,11 @@ export const updatePlatformFeatures = (id: string, features: string[]) =>
     method: 'PATCH',
     body: JSON.stringify({ features }),
   })
+
+/* ── mock otps ────────────────────────────────────────────────────────────── */
+
+export const deleteMockOtp = (id: string) =>
+  staffApi<void>(`/customers/mock-otps/${id}`, { method: 'DELETE' })
+
+export const deleteAllMockOtps = () =>
+  staffApi<void>('/customers/mock-otps', { method: 'DELETE' })

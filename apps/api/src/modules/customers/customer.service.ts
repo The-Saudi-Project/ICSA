@@ -41,5 +41,13 @@ export async function verifyOtp(phone: string, code: string): Promise<{ token: s
 }
 
 export async function getMockOtps() {
-  return OtpCodeModel.find({}, { _id: 0, phone: 1, code: 1, createdAt: 1, usedAt: 1 }).sort({ createdAt: -1 }).limit(50)
+  return OtpCodeModel.find({}, { _id: 1, phone: 1, code: 1, createdAt: 1, usedAt: 1 }).sort({ createdAt: -1 }).limit(50)
+}
+
+export async function deleteOtp(id: string): Promise<void> {
+  await OtpCodeModel.findByIdAndDelete(id)
+}
+
+export async function deleteAllOtps(): Promise<void> {
+  await OtpCodeModel.deleteMany({})
 }
