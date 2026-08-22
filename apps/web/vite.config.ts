@@ -11,12 +11,25 @@ export default defineConfig({
       registerType: 'autoUpdate',
       devOptions: { enabled: false },
       manifest: {
-        name: 'Restaurant Platform',
-        short_name: 'Restaurant',
+        name: 'Simat',
+        short_name: 'Simat',
+        description: 'Tap the table — the menu opens on your phone.',
+        lang: 'en',
         theme_color: '#0a0a12',
         background_color: '#0a0a12',
         display: 'standalone',
-        icons: [] // would be populated with real icons
+        icons: [
+          {
+            src: '/icon.svg',
+            sizes: '192x192',
+            type: 'image/svg+xml'
+          },
+          {
+            src: '/icon.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml'
+          }
+        ]
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff,woff2,svg,png,ico}'],
