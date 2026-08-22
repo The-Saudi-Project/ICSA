@@ -1,6 +1,6 @@
 import { OrderStatus, allowedNextStatuses } from '@rw/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router'
 import { fetchBoard, transitionOrder, getStaffUser, type StaffOrder, fetchWaiterCalls, resolveWaiterCall } from '../../lib/staffApi.js'
 import { Card } from '../../components/ui/Card.js'
@@ -45,6 +45,7 @@ export default function Waiter() {
   const { data: callsData } = useQuery({
     queryKey: ['waiterCalls'],
     queryFn: fetchWaiterCalls,
+    refetchInterval: 10000, // Poll every 10s as a fallback for dropped socket events
   })
 
   const resolveCall = useMutation({
@@ -83,6 +84,31 @@ export default function Waiter() {
       socket.off('call_waiter_resolved', handleCallResolved)
     }
   }, [socket, isConnected, queryClient, showToast])
+
+  // Fallback: trigger notification and sound when callsData changes (e.g. from polling)
+  // We keep track of known call IDs using a ref to avoid dependency cycles.
+  const knownCalls = useRef<Set<string>>(new Set())
+  const isFirstLoad = useRef(true)
+  
+  useEffect(() => {
+    if (!callsData) return
+
+    const currentCallIds = new Set((callsData.calls || []).map(c => c._id))
+    
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false
+    } else {
+      const newCalls = (callsData.calls || []).filter(c => !knownCalls.current.has(c._id))
+      if (newCalls.length > 0) {
+        newCalls.forEach(call => {
+          showToast(`Table ${call.label} is calling for a waiter!`, 'info')
+        })
+        playAlertBeep()
+      }
+    }
+    
+    knownCalls.current = currentCallIds
+  }, [callsData, showToast])
 
   const advance = useMutation({
     mutationFn: ({ order, to }: { order: StaffOrder; to: OrderStatus }) =>
