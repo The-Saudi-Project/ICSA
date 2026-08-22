@@ -37,10 +37,13 @@ const idParamsSchema = z.object({ id: objectIdSchema })
 
 orderRouter.get('/waiter-calls', async (_req: Request, res: Response) => {
   const restaurantId = requireTenantId()
-  const tables = await TableModel.find({ 
-    restaurantId, 
-    needsWaiterAt: { $gt: new Date(0) } // Standard date comparison avoids Mongoose CastError and sanitizeFilter errors
-  }).select('label needsWaiterAt status').sort({ needsWaiterAt: 1 })
+  const tables = await TableModel.find(
+    { restaurantId, needsWaiterAt: { $ne: null } },
+    null,
+    { sanitizeFilter: false }
+  )
+    .select('label needsWaiterAt status')
+    .sort({ needsWaiterAt: 1 })
   
   res.setHeader('Cache-Control', 'no-store')
   res.status(200).json({ calls: tables })
