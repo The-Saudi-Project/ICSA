@@ -68,7 +68,7 @@ customerRouter.delete(
   requireAuth,
   requireRole(Role.OWNER, Role.PLATFORM_ADMIN),
   async (req: Request, res: Response) => {
-    await customerService.deleteOtp(req.params.id)
+    await customerService.deleteOtp(req.params['id'] as string)
     res.status(204).end()
   }
 )
