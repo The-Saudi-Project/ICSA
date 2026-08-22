@@ -39,7 +39,7 @@ orderRouter.get('/waiter-calls', async (_req: Request, res: Response) => {
   const restaurantId = requireTenantId()
   const tables = await TableModel.find({ 
     restaurantId, 
-    needsWaiterAt: { $type: 'date' } // $type: 'date' avoids Mongoose CastError on $ne: null
+    $expr: { $ne: ['$needsWaiterAt', null] } // $expr bypasses Mongoose casting
   }).select('label needsWaiterAt status').sort({ needsWaiterAt: 1 })
   
   res.setHeader('Cache-Control', 'no-store')
