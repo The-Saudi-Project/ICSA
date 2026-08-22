@@ -30,6 +30,7 @@ const AdminHealth = lazy(() => import('./routes/staff/AdminHealth.js'))
 const AdminOtps = lazy(() => import('./routes/staff/AdminOtps.js'))
 const Platform = lazy(() => import('./routes/staff/Platform.js'))
 const PlatformTenantDetail = lazy(() => import('./routes/staff/PlatformTenantDetail.js'))
+const PlatformLeads = lazy(() => import('./routes/staff/PlatformLeads.js'))
 const StaffLayout = lazy(() => import('./routes/staff/StaffLayout.js'))
 
 const queryClient = new QueryClient({
@@ -98,6 +99,7 @@ export default function App() {
                       <Route index element={<Suspense fallback={<Fallback />}><Platform /></Suspense>} />
                       <Route path="tenants" element={<Suspense fallback={<Fallback />}><Platform /></Suspense>} />
                       <Route path="tenants/:id" element={<Suspense fallback={<Fallback />}><PlatformTenantDetail /></Suspense>} />
+                      <Route path="leads" element={<Suspense fallback={<Fallback />}><PlatformLeads /></Suspense>} />
                       <Route path="security" element={<Suspense fallback={<Fallback />}><Platform /></Suspense>} />
                     </Route>
                   </Route>

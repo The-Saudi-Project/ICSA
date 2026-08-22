@@ -19,7 +19,20 @@ function getInitialLocale(): Locale {
   } catch {
     // ignore
   }
-  return 'en'; // default English
+
+  // No stored choice: follow the device. A phone set to Arabic opens in Arabic
+  // — which for this market is most of them — and everyone else gets English.
+  // A choice made with the toggle is stored above and always wins afterwards.
+  try {
+    const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
+    if (languages.some((tag) => typeof tag === 'string' && tag.toLowerCase().startsWith('ar'))) {
+      return 'ar';
+    }
+  } catch {
+    // ignore
+  }
+
+  return 'en';
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {

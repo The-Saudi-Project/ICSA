@@ -268,6 +268,35 @@ export const resolveWaiterCall = (id: string) =>
     method: 'POST',
   })
 
+/* ── enquiries (platform admin) ───────────────────────────────────────────── */
+
+export type LeadStatus = 'NEW' | 'CONTACTED' | 'ARCHIVED'
+
+export interface Lead {
+  id: string
+  restaurantName: string
+  contactName: string
+  phone: string
+  email?: string
+  city?: string
+  branches?: number
+  message?: string
+  locale: string
+  status: LeadStatus
+  createdAt: string
+}
+
+export const fetchLeads = (status?: LeadStatus) =>
+  staffApi<{ leads: Lead[]; total: number }>(
+    status ? `/platform/leads?status=${status}` : '/platform/leads',
+  )
+
+export const setLeadStatus = (id: string, status: LeadStatus) =>
+  staffApi<{ lead: Lead }>(`/platform/leads/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+
 export const confirmCash = (id: string) =>
   staffApi<{ order: StaffOrder }>(`/app/orders/${id}/confirm-cash`, { method: 'POST' })
 

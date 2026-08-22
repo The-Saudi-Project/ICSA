@@ -28,7 +28,7 @@ export function CallWaiterFab() {
     <button
       onClick={() => void handleCall()}
       disabled={calling}
-      className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-xl hover:bg-accent-bright focus:outline-none focus:ring-4 focus:ring-accent/30 disabled:opacity-50 transition-all hover:-translate-y-1"
+      className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-xl hover:bg-accent-bright focus:outline-none focus:ring-4 focus:ring-accent/30 disabled:opacity-50 pressable"
       aria-label="Call Waiter"
     >
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

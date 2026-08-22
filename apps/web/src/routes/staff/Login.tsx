@@ -6,6 +6,7 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { homeForRole } from '../../lib/roles.js'
 import { login, StaffApiError } from '../../lib/staffApi.js'
+import { BrandLockup } from '../../components/BrandLockup.js'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -36,13 +37,7 @@ export default function Login() {
       <div className="glass-strong mx-auto w-full max-w-sm px-8 py-10 animate-slide-up">
         {/* Logo / Brand */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-bright">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-          </div>
+          <BrandLockup size="lg" className="mb-6 justify-center" />
           <h1 className="text-title">Staff Sign In</h1>
           <p className="mt-1 text-meta text-ink-soft">Enter your credentials to continue</p>
         </div>

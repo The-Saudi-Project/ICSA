@@ -50,6 +50,15 @@ export const refreshRateLimit = build({
   limit: 60,
 })
 
+/**
+ * The public contact form. Tight on purpose — a genuine restaurant owner sends
+ * one message, and anything sending five an hour from one address is a script.
+ */
+export const leadRateLimit = build({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+})
+
 /** General ceiling for authenticated API traffic. */
 export const apiRateLimit = build({
   windowMs: 60 * 1000,

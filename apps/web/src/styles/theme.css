@@ -403,7 +403,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .pressable:active {
+    .pressable:active,
+    .btn-gradient:active:not(:disabled) {
       transform: none;
       opacity: 0.85;
     }
@@ -441,6 +442,13 @@
   .btn-gradient:hover {
     box-shadow: 0 0 25px var(--color-accent-glow), var(--shadow-lg), inset 0 1px 1px rgba(255, 255, 255, 0.5);
     border-color: rgba(255,255,255,0.5);
+  }
+
+  /* Every pressable surface in the product scales on :active — the primary
+     button was the one that did not, which made the most important control on
+     the page the least responsive one. */
+  .btn-gradient:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   .btn-gradient:disabled {

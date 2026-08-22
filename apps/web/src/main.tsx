@@ -14,6 +14,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.js'
 import './styles/theme.css'
 import './styles/openwork.css'
+import './styles/home.css'
 import { restoreSession } from './lib/staffApi.js'
 
 import { registerSW } from 'virtual:pwa-register'

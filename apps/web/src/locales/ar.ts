@@ -90,7 +90,7 @@ export const ar: Translations = {
   stateExpiredDetail: 'لم يتم تأكيده في الوقت المحدد.',
 
   // Staff Layout
-  osAdmin: 'إدارة النظام',
+  poweredBy: 'بدعم من',
   overview: 'نظرة عامة',
   orderHistory: 'سجل الطلبات',
   menuEditor: 'تعديل القائمة',
@@ -99,6 +99,7 @@ export const ar: Translations = {
   cashierTill: 'الكاشير',
   kitchenDisplay: 'شاشة المطبخ',
   tenantDirectory: 'دليل المطاعم',
+  enquiries: 'طلبات التواصل',
   securityAudit: 'الأمان والسجلات',
   management: 'الإدارة',
   operations: 'العمليات',

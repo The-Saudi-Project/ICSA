@@ -57,6 +57,10 @@ export const AuditAction = {
    * so it is recorded separately with before/after values.
    */
   RESTAURANT_SETTINGS_CHANGED: 'RESTAURANT_SETTINGS_CHANGED',
+  /** A sales enquiry was triaged. The submission itself is not audited: it is
+   *  anonymous, public and rate-limited, so logging it would only give a script
+   *  a way to fill the log. Acting on someone's personal data is what matters. */
+  LEAD_STATUS_CHANGED: 'LEAD_STATUS_CHANGED',
   /**
    * Retired 2026-08-11. Nothing writes it any more — removing a staff member is
    * a disable, so the audit trail keeps pointing at a real account. Kept in the

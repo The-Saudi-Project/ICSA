@@ -98,3 +98,35 @@ Dynamic micro-animations are essential to the premium feel of the app. The syste
 1. **`<Price>` renders all money**, tabular, gold numeral with a quieter `SAR`. Never format a price by hand.
 2. **Logical properties** (`ms-*`, `ps-*`, `text-start`) are used everywhere so Phase 2 RTL is not a rewrite.
 3. **`--app-header-h`** is used for sticky offsets, never a measured constant.
+
+---
+
+## The homepage (added 2026-08-22)
+
+The marketing page follows the same system as the product, with one deliberate difference: it is
+allowed to be slower. Product UI stays under 300ms because people use it hundreds of times a day;
+a homepage section is seen once, so 400–550ms reads as considered rather than sluggish.
+
+**Motion rules used there**
+
+| Rule | Value | Why |
+|---|---|---|
+| Entrance easing | `cubic-bezier(0.23, 1, 0.32, 1)` | Strong ease-out. Movement starts immediately, which is the moment the eye is watching |
+| Scroll reveal | `once: true`, `margin: -80px` | Fires *before* the element arrives, so the reader never waits for an animation |
+| Stagger | 60ms between siblings | Reads as a cascade; long enough to notice, short enough not to delay |
+| Screen swaps in the demo | 180ms | Fast enough to feel like software |
+| Entrances | from `scale(0.96)`, never `scale(0)` | Nothing in the real world appears out of nothing |
+| Status chip crossfade | 160ms + `blur(2px)` | Blur bridges the two labels; without it you see two words overlapping |
+| Hover lift (`.lift`) | inside `@media (hover: hover) and (pointer: fine)` | On a touch screen `:hover` sticks after a tap |
+| `prefers-reduced-motion` | fades kept, movement dropped, ambient loops stopped | Reduced motion means gentler, not absent |
+
+**The 3D scene** (`styles/home.css`, `routes/home/Scene3D.tsx`) is CSS, not WebGL: `perspective`
+on the frame, `transform-style: preserve-3d` on the stage, and each layer at a real `translateZ`.
+The tilt follows the cursor through a spring and is applied as one `transform` string built with
+`useMotionTemplate`, so it stays on the compositor while the page is still loading.
+
+**Two fixes to the shared system**, both visible everywhere in the product:
+
+- `.btn-gradient` now scales to `0.97` on `:active`. The primary button was the only pressable
+  surface in the app that did not respond to a press.
+- `Button` no longer uses `transition: all`; it names the properties it animates.

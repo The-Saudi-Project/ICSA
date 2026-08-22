@@ -43,7 +43,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        className={`inline-flex items-center justify-center font-semibold transition-all ${variantClass} ${sizeClass} ${disabledClass} ${className}`}
+        className={`inline-flex items-center justify-center font-semibold transition-[transform,background-color,border-color,box-shadow,opacity] duration-150 ${variantClass} ${sizeClass} ${disabledClass} ${className}`}
         disabled={disabled || isLoading}
         {...props}
       >

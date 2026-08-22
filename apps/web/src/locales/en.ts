@@ -88,7 +88,7 @@ export const en = {
   stateExpiredDetail: 'It was not confirmed in time.',
 
   // Staff Layout
-  osAdmin: 'OS Admin',
+  poweredBy: 'Powered by',
   overview: 'Overview',
   orderHistory: 'Order History',
   menuEditor: 'Menu Editor',
@@ -97,6 +97,7 @@ export const en = {
   cashierTill: 'Cashier / Till',
   kitchenDisplay: 'Kitchen Display',
   tenantDirectory: 'Tenant Directory',
+  enquiries: 'Enquiries',
   securityAudit: 'Security & Audit',
   management: 'Management',
   operations: 'Operations',

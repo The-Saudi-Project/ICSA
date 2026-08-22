@@ -8,6 +8,7 @@ import { Skeleton } from '../components/ui/Skeleton.js'
 import { Button } from '../components/ui/Button.js'
 import { useState, useRef, useEffect } from 'react'
 import { useI18n } from '../lib/i18n.js'
+import { brandName } from '../lib/brand.js'
 import { usePullToRefresh } from '../hooks/usePullToRefresh.js'
 import { CallWaiterFab } from '../components/CallWaiterFab.js'
 
@@ -214,6 +215,12 @@ export default function Menu() {
           </div>
           <h3 className="text-h3 font-bold text-ink">Need Assistance?</h3>
           <p className="mt-2 text-body text-ink-soft">Speak to a member of our staff if you need help ordering or have any questions.</p>
+
+          {/* The guest is a customer of the restaurant, not of us. Ours is a
+              footnote, deliberately quiet and never above the restaurant's name. */}
+          <p className="mt-10 text-caption text-ink-faint">
+            {t('poweredBy')} {brandName(locale)}
+          </p>
         </div>
       </main>
 

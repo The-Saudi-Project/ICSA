@@ -15,6 +15,7 @@ interface NavItem {
 }
 
 import { useI18n } from '../../lib/i18n.js'
+import { BrandLockup } from '../../components/BrandLockup.js'
 
 export default function StaffLayout() {
   const navigate = useNavigate()
@@ -71,6 +72,7 @@ export default function StaffLayout() {
   const PLATFORM_NAV: NavItem[] = [
     { to: '/platform', label: t('overview'), icon: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', end: true },
     { to: '/platform/tenants', label: t('tenantDirectory'), icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' },
+    { to: '/platform/leads', label: t('enquiries'), icon: 'M4 4h16v16H4zM4 7l8 6 8-6' },
     { to: '/platform/security', label: t('securityAudit'), icon: 'M3 11h18M7 11V7a5 5 0 0 1 10 0v4' },
   ]
 
@@ -84,12 +86,7 @@ export default function StaffLayout() {
       {/* Sidebar */}
       <aside className="w-64 glass border-y-0 border-l-0 border-r border-border flex-col hidden md:flex rounded-none z-20 transition-colors duration-300">
         <div className="p-6 border-b border-border">
-           <div className="flex items-center gap-3">
-             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent-bright flex items-center justify-center text-white shadow-lg">
-               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-             </div>
-             <h1 className="text-h3 font-black text-ink tracking-tight">{t('osAdmin')}</h1>
-           </div>
+           <BrandLockup size="md" />
         </div>
 
         <div className="flex-1 overflow-y-auto py-8 px-4">
@@ -216,12 +213,7 @@ export default function StaffLayout() {
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setMobileMenuOpen(false)} />
           <aside className="w-[280px] glass border-r border-border flex flex-col h-full bg-ground relative shadow-2xl animate-slide-right">
              <div className="p-4 border-b border-border flex justify-between items-center">
-               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent-bright flex items-center justify-center text-white shadow-lg">
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                 </div>
-                 <h1 className="text-h3 font-black text-ink tracking-tight">{t('osAdmin')}</h1>
-               </div>
+               <BrandLockup size="md" />
                <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-ink-soft hover:bg-surface-hover" aria-label="Close menu">
                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                </button>
@@ -298,10 +290,7 @@ export default function StaffLayout() {
              <button onClick={() => setMobileMenuOpen(true)} className="w-8 h-8 rounded-lg flex items-center justify-center text-ink hover:bg-surface-hover -ml-2" aria-label="Open navigation menu">
                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
              </button>
-             <div className="w-6 h-6 rounded bg-gradient-to-br from-accent to-accent-bright flex items-center justify-center text-white shrink-0">
-               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
-             </div>
-             <h1 className="text-body font-bold text-ink truncate">{t('osAdmin')}</h1>
+             <BrandLockup size="sm" />
            </div>
            <div className="flex items-center gap-2">
              <button onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')} className="w-8 h-8 rounded-full bg-surface-strong flex items-center justify-center text-ink-soft">

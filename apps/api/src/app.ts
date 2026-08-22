@@ -25,7 +25,7 @@ import { env } from './config/env.js'
 import { getContext } from './core/context.js'
 import { logger } from './core/logger.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
-import { apiRateLimit, menuRateLimit, orderRateLimit, staffRateLimit } from './middleware/rateLimit.js'
+import { apiRateLimit, leadRateLimit, menuRateLimit, orderRateLimit, staffRateLimit } from './middleware/rateLimit.js'
 import { requestContext } from './middleware/requestContext.js'
 import { authRouter } from './modules/auth/auth.routes.js'
 import { healthRouter } from './modules/health/health.routes.js'
@@ -35,6 +35,7 @@ import { staffRouter } from './modules/staff/staff.routes.js'
 import { platformRouter } from './modules/platform/platform.routes.js'
 import { publicRouter } from './modules/public/public.routes.js'
 import { tablePickerRouter, tableRouter } from './modules/tables/table.routes.js'
+import { leadRouter, platformLeadRouter } from './modules/leads/lead.routes.js'
 import { appDashboardRouter, platformDashboardRouter } from './modules/dashboard/dashboard.routes.js'
 import { restaurantRouter } from './modules/restaurants/restaurant.routes.js'
 import { customerRouter } from './modules/customers/customer.routes.js'
@@ -122,6 +123,10 @@ export function createApp(): Express {
   v1.use('/auth', authRouter)
   v1.use('/customers', customerRouter)
   v1.use('/public', publicRouter) // customers: table session only, no login
+  // The homepage contact form. Public, unauthenticated, and the only route
+  // outside /public that anyone on the internet may reach.
+  v1.use('/leads', leadRateLimit, leadRouter)
+  v1.use('/platform/leads', staffRateLimit, platformLeadRouter) // our inbox — before /platform
   v1.use('/platform/dashboard', platformDashboardRouter) // platform dashboard
   v1.use('/platform', platformRouter) // us
   app.use('/api/v1', v1)

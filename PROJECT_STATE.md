@@ -724,6 +724,16 @@ GET  /api/v1/public/orders/:publicId        this session's order only
 POST /api/v1/public/orders/:publicId/cancel inside ORDER_CANCEL_WINDOW_SECONDS
 GET  /api/v1/public/session                 session token → { tableId, restaurantId }
 
+# public — the homepage contact form (no auth, 5 per hour per IP)
+POST /api/v1/leads                        { restaurantName, contactName, phone,
+                                            email?, city?, branches?, message?,
+                                            locale, website(honeypot) }
+                                          Replies { received: true } and nothing else.
+
+# us — the enquiry inbox (PLATFORM_ADMIN only)
+GET   /api/v1/platform/leads              ?status=NEW|CONTACTED|ARCHIVED
+PATCH /api/v1/platform/leads/:id/status   { status } — audited LEAD_STATUS_CHANGED
+
 # restaurant staff — tables (OWNER | MANAGER only, except the picker)
 GET    /api/v1/app/tables/selectable      OWNER | MANAGER | WAITER — id + label only,
                                           never the table URL. Roles match staff-create.
@@ -862,6 +872,18 @@ These are deliberate. **Do not reverse them without explicit product-owner appro
 
 ## 15. Business Decisions
 
+### Product name — **Simat · سِماط** (decided 2026-08-22)
+
+سِماط is the spread of food laid out in front of a guest — which is what the product does the
+moment a phone touches the table. Chosen over warmer but weaker options (*Sufra*, *Karam*,
+*Diwan*) because an everyday word cannot be defended as a trademark, and over every "tap"
+name because **Arabic has no /p/** — *Tapla* is heard as *tabla*, a drum. Names built on
+ق were also ruled out: Najdi speakers say it as a hard G, so spelling and speech diverge, and
+قريب *(near)* differs from غريب *(stranger)* by a single dot.
+
+Wired through the app on the same day. **Not yet cleared** — a SAIP trademark search in classes
+9, 42, 35 and 43, plus domains and the Arabic CR name, is still to do (§7).
+
 - Primary market: Saudi Arabia.
 - Customer-facing NFC/QR ordering is the core product.
 - The restaurant keeps its existing POS/accounting system; we integrate rather than replace.
@@ -978,7 +1000,7 @@ error branch renders as an empty list.
 
 ## 18. Tests
 
-Last run: **2026-08-22 — 288 API + 43 shared passed, 0 failed.** Security suite: **216 across 11
+Last run: **2026-08-22 — 298 API + 43 shared passed, 0 failed.** Security suite: **226 across 12
 files.**
 
 ```
@@ -1020,6 +1042,9 @@ files.**
 @rw/api     query operators            4 passed  (NEW 2026-08-22 — every deliberate operator
                                                   survives sanitizeFilter: menu search, OTP
                                                   verify + replay + expiry, order cursor)
+@rw/api     SECURITY leads            10 passed  (NEW 2026-08-22 — the public form validates,
+                                                  says nothing back, hashes the IP, swallows
+                                                  bots; the inbox is platform-admin only)
 ```
 
 Mandatory tenant-isolation matrix from the brief:
@@ -1184,6 +1209,68 @@ AI recommendations · demand forecasting · ERP integrations · enterprise SSO �
 ## 24. Last Session Summary
 
 ```
+Date:      2026-08-22 (later)
+Session:   The homepage — a real one, bilingual, with a working contact form
+```
+
+**The old landing page sold a product we do not make.** It called itself an "NFC-powered POS
+system" and promised to "revolutionize" the restaurant, which is the opposite of the pitch: the
+restaurant keeps its POS. It is now a full homepage, in **both languages**, built around what the
+product actually does.
+
+**Sections:** hero with a 3D scene · "you are not replacing anything" · how it works (4 steps) ·
+an **interactive demo** · features (6) · the five surfaces · how the boring parts are done
+(tenant isolation, table tokens, halalas, no card data) · 7 FAQs · contact form · footer.
+
+**The demo is the centrepiece.** Press one button and the scripted sequence runs on both sides at
+once — the guest's phone moves tap → menu → cart → placed → preparing → ready, while the kitchen
+ticket appears and changes status beside it. It talks to no API on purpose: it cannot fail in
+front of a prospect because a free-tier server was cold, and it shows the simultaneity that *is*
+the product.
+
+**The 3D is CSS, not WebGL.** `perspective` + `transform-style: preserve-3d` puts the table at
+64°, the card on it, the phone 120px above and the status chips higher still, so tilting the
+scene produces real parallax. The tilt follows the cursor through a **spring** rather than
+tracking it directly, and is emitted as a single `transform` string via `useMotionTemplate` so the
+compositor owns it. Three.js was considered and rejected: ~150 KB and 3D assets nobody has made,
+for a page whose readers are on mid-range Androids.
+
+**Dependency added: `framer-motion` (13.x, MIT, free).** The product owner chose it over
+hand-rolled springs. It lands in the lazy `Landing` chunk (176 KB raw / ~50 KB gzip) — the
+customer menu path does not load it.
+
+**The contact form is real.** `POST /api/v1/leads` is public, rate-limited to 5/hour per IP,
+Zod-validated, and stores the enquiry in our own database with the IP hashed. It answers
+`{ received: true }` and nothing else — an id or a count in that reply would let anyone measure
+our pipeline. A honeypot field answers 201 and stores nothing. The inbox lives at
+`/platform/leads`, platform-admin only, with three-state triage audited as
+`LEAD_STATUS_CHANGED`. Ten tests in `tests/security/lead-security.test.ts`.
+
+**Two design-system defects fixed while in there:** `Button` used `transition: all` (animating
+properties nobody chose, including layout ones), and `.btn-gradient` — the *primary* button, the
+most important control in the product — had no `:active` state, so it was the only unpressable
+surface in an app where everything else scales to 0.96.
+
+**Language now follows the device.** `getInitialLocale()` reads `navigator.languages` when nobody
+has chosen yet: a phone set to Arabic opens in Arabic, everyone else gets English, and a choice
+made with the toggle is stored and always wins afterwards. **This affects the whole product, not
+only the homepage** — a staff member on an Arabic device now lands on the Arabic UI by default.
+Decided by the product owner on 2026-08-22.
+
+**Decided at the same time:** no live demo table for now — the scripted simulation is the only
+demo, so there is nothing publicly orderable to police.
+
+**Still open, needs the product owner:** no phone number, WhatsApp or email appears anywhere on
+the page, because none were given and none will be invented. The form is the only channel until
+those arrive. Pricing is deliberately absent ("request a quote").
+
+**Next action** — supply the contact details, then the three decisions in §16 Open.
+
+---
+
+### Previous session
+
+```
 Date:      2026-08-22
 Session:   Production 500 on the waiter-call board — and the three routes carrying the
            same defect
@@ -1249,6 +1336,13 @@ that makes the cart exactly one viewport tall, leaving the `flex:1` menu pane 0p
 only ever worked side-by-side. The fixed-height pair is now `md:` and up; below that the panes
 stack and the page scrolls. The menu pane also gained the one empty state it was still missing:
 items that are available but whose category is switched off used to render as a blank pane.
+
+**The product has a name: Simat — سِماط** (§15), and it is wired through the app rather than
+pasted in: `lib/brand.ts` holds the two script forms and the tagline, `components/BrandLockup.tsx`
+holds the mark and wordmark, and the sidebar, mobile drawer, mobile header, sign-in card and
+landing page all render that one component. The `osAdmin` locale string is gone — a brand is not
+a translation. The landing page's claim to be an "NFC-powered POS system" went with it: this
+product sits *beside* the POS the restaurant already runs, and the front page now says so.
 
 **Raised, deliberately not changed:** the `/customers/*` module is not safe to ship as written —
 the customer's Mongo `_id` is used as a bearer token, `GET /customers/orders` is cross-tenant by

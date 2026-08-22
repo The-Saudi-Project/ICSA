@@ -12,6 +12,7 @@
 
 import type { StaffOrder } from './staffApi.js'
 import { money } from './format.js'
+import { BRAND } from './brand.js'
 
 export interface PrintReceiptOptions {
   order: StaffOrder
@@ -94,6 +95,7 @@ function buildReceiptHtml(opts: PrintReceiptOptions): string {
   <div class="center mt">
     <div>Thank you for your visit!</div>
     ${vatNumber ? `<div class="small mt">VAT No: ${vatNumber}</div>` : ''}
+    <div class="small mt">${BRAND.name}</div>
   </div>
 </body>
 </html>`
