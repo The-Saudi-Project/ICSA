@@ -38,7 +38,8 @@ type Method = 'get' | 'post' | 'patch' | 'delete'
 
 /** Everything only an OWNER or MANAGER may touch. */
 const ADMIN_ROUTES: readonly [Method, string][] = [
-  ['get', '/api/v1/app/menu/categories'],
+  // NB: `GET /menu/categories` is deliberately *not* here — see
+  // "reading the menu is not an admin privilege" below.
   ['post', '/api/v1/app/menu/categories'],
   ['patch', `/api/v1/app/menu/categories/${SOME_ID}`],
   ['delete', `/api/v1/app/menu/categories/${SOME_ID}`],
@@ -105,7 +106,6 @@ describe('no admin route forgot its guard', () => {
     const session = await loginAs(tenant.owner.email)
 
     for (const path of [
-      '/api/v1/app/menu/categories',
       '/api/v1/app/tables',
       '/api/v1/app/staff',
       '/api/v1/app/dashboard/stats',
@@ -137,6 +137,16 @@ describe('the surfaces those roles legitimately do have still work', () => {
 
     const board = await request(app).get('/api/v1/app/orders?board=kitchen').set(auth(session))
     expect(board.status).toBe(200)
+  })
+
+  it('reading the menu is not an admin privilege — categories come with the items', async () => {
+    const tenant = await makeTenant()
+
+    for (const email of [tenant.cashier.email, tenant.kitchen.email, tenant.owner.email]) {
+      const session = await loginAs(email)
+      const res = await request(app).get('/api/v1/app/menu/categories').set(auth(session))
+      expect(res.status, `GET /menu/categories as ${email}`).toBe(200)
+    }
   })
 
   it('a kitchen user still cannot flip availability — that is the cashier’s', async () => {

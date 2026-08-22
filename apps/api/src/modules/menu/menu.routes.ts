@@ -38,10 +38,18 @@ const listItemsQuerySchema = z.object({ categoryId: objectIdSchema.optional() })
 
 /* ── categories ───────────────────────────────────────────────────────────── */
 
-menuRouter.get('/categories', requireRestaurantAdmin, async (_req, res: Response) => {
-  const categories = await menuService.listCategories()
-  res.status(200).json({ categories, count: categories.length })
-})
+menuRouter.get(
+  '/categories',
+  // Same roles as `GET /items` below, and for the same reason: an order-taking
+  // or kitchen screen shows items grouped by their category, so withholding the
+  // names while handing over the items themselves protects nothing and leaves
+  // those screens blank. Every category *change* is still owner/manager-only.
+  requireRole(Role.OWNER, Role.MANAGER, Role.CASHIER, Role.KITCHEN, Role.WAITER),
+  async (_req, res: Response) => {
+    const categories = await menuService.listCategories()
+    res.status(200).json({ categories, count: categories.length })
+  },
+)
 
 menuRouter.post(
   '/categories',

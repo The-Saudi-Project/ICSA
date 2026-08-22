@@ -533,6 +533,25 @@ export interface AdminTable {
 
 export const fetchTables = () => staffApi<{ tables: AdminTable[] }>('/app/tables')
 
+/**
+ * What an order-taking screen gets: enough to name a table, and nothing more.
+ *
+ * `AdminTable` carries `url`, which is the table's credential, so the server
+ * only ever sends it to an owner or manager. Waiters take orders, so they get
+ * this list instead. Never reach for `fetchTables` on the POS screen — it is a
+ * 403 for the role that screen exists for.
+ */
+export interface SelectableTable {
+  id: string
+  label: string
+  zone?: string | null
+  seats?: number | null
+  assignedWaiterId?: string | null
+}
+
+export const fetchSelectableTables = () =>
+  staffApi<{ tables: SelectableTable[] }>('/app/tables/selectable')
+
 export const createTable = (label: string, zone?: string) =>
   staffApi<{ table: AdminTable }>('/app/tables', {
     method: 'POST',

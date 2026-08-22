@@ -8,7 +8,7 @@ import { SoundToggle } from '../../components/SoundToggle.js'
 import { useRestaurantSocket } from '../../lib/socket.js'
 import { useToast } from '../../components/ToastContext.js'
 import { useI18n } from '../../lib/i18n.js'
-import { playAlertBeep } from '../../lib/audio.js'
+import { playWaiterCallAlert } from '../../lib/audio.js'
 
 function useMinuteTick() {
   const [, setTick] = useState(0)
@@ -64,9 +64,10 @@ export default function Waiter() {
       void queryClient.invalidateQueries({ queryKey: ['board', 'waiter'] })
     }
 
-    const handleCallWaiter = (payload: { tableLabel: string, tableId: string, time: string }) => {
-      showToast(`Table ${payload.tableLabel} is calling for a waiter!`, 'info')
-      playAlertBeep()
+    // Announcing the call here as well as below would announce it twice: this
+    // refetch is what makes it appear in `callsData`, and that is where the
+    // toast and the alert are raised — for socket and poll alike.
+    const handleCallWaiter = () => {
       void queryClient.invalidateQueries({ queryKey: ['waiterCalls'] })
     }
 
@@ -83,10 +84,11 @@ export default function Waiter() {
       socket.off('call_waiter', handleCallWaiter)
       socket.off('call_waiter_resolved', handleCallResolved)
     }
-  }, [socket, isConnected, queryClient, showToast])
+  }, [socket, isConnected, queryClient])
 
-  // Fallback: trigger notification and sound when callsData changes (e.g. from polling)
-  // We keep track of known call IDs using a ref to avoid dependency cycles.
+  // A call announces itself from here whichever way it arrived — the socket
+  // event above only shortens the wait for the refetch. Known ids live in a ref
+  // to keep this effect out of its own dependency list.
   const knownCalls = useRef<Set<string>>(new Set())
   const isFirstLoad = useRef(true)
   
@@ -103,7 +105,9 @@ export default function Waiter() {
         newCalls.forEach(call => {
           showToast(`Table ${call.label} is calling for a waiter!`, 'info')
         })
-        playAlertBeep()
+        // One alert for the batch: two tables calling at once is still one
+        // reason to walk over, and overlapping copies only muddy each other.
+        playWaiterCallAlert()
       }
     }
     

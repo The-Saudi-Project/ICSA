@@ -34,7 +34,7 @@ import { orderRouter } from './modules/orders/order.routes.js'
 import { staffRouter } from './modules/staff/staff.routes.js'
 import { platformRouter } from './modules/platform/platform.routes.js'
 import { publicRouter } from './modules/public/public.routes.js'
-import { tableRouter } from './modules/tables/table.routes.js'
+import { tablePickerRouter, tableRouter } from './modules/tables/table.routes.js'
 import { appDashboardRouter, platformDashboardRouter } from './modules/dashboard/dashboard.routes.js'
 import { restaurantRouter } from './modules/restaurants/restaurant.routes.js'
 import { customerRouter } from './modules/customers/customer.routes.js'
@@ -110,6 +110,9 @@ export function createApp(): Express {
   v1.use('/app/menu', menuRateLimit, menuRouter)
   v1.use('/app/orders', orderRateLimit, orderRouter)
   v1.use('/app/staff', staffRateLimit, staffRouter)
+  // Order of these two matters: the picker router holds one non-admin route and
+  // falls through to the admin router for everything else.
+  v1.use('/app/tables', staffRateLimit, tablePickerRouter)
   v1.use('/app/tables', staffRateLimit, tableRouter)
   v1.use('/app/dashboard', staffRateLimit, appDashboardRouter) // restaurant dashboard
   v1.use('/app/restaurants', staffRateLimit, restaurantRouter)

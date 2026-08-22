@@ -724,7 +724,9 @@ GET  /api/v1/public/orders/:publicId        this session's order only
 POST /api/v1/public/orders/:publicId/cancel inside ORDER_CANCEL_WINDOW_SECONDS
 GET  /api/v1/public/session                 session token → { tableId, restaurantId }
 
-# restaurant staff — tables (OWNER | MANAGER only)
+# restaurant staff — tables (OWNER | MANAGER only, except the picker)
+GET    /api/v1/app/tables/selectable      OWNER | MANAGER | WAITER — id + label only,
+                                          never the table URL. Roles match staff-create.
 GET    /api/v1/app/tables
 POST   /api/v1/app/tables                { label, zone?, seats? }
 PATCH  /api/v1/app/tables/:id
@@ -733,7 +735,8 @@ GET    /api/v1/app/tables/:id/qr          ?format=png|svg
 GET    /api/v1/app/tables/export           CSV of table URLs for NFC writing
 
 # restaurant staff — menu
-GET|POST                /api/v1/app/menu/categories        OWNER | MANAGER
+GET                     /api/v1/app/menu/categories        any staff role (read)
+POST                    /api/v1/app/menu/categories        OWNER | MANAGER
 PATCH|DELETE            /api/v1/app/menu/categories/:id    OWNER | MANAGER
 GET                     /api/v1/app/menu/items             any staff role (read)
 POST                    /api/v1/app/menu/items             OWNER | MANAGER
@@ -930,11 +933,26 @@ Mongoose 8.24.2 source, not from memory.
 | A Socket.IO failure could 500 a customer's waiter call | Low | ✅ fixed | The three waiter-call emits called `getIO()` unguarded, unlike every other emit in the codebase. Now wrapped in the same `try/catch` + `logger.warn`: the flag is already persisted and the waiter screen also polls, so a realtime hiccup must not fail the request |
 | `createOrder` read the table with `unscoped()` | Low | ✅ fixed | Convention drift, not a leak — the id came from the verified session. The tenant is established two lines above, so it is now `tenantRepo(TableModel, restaurantId).findById(...)`. The three `unscoped()` table lookups left are the legitimate ones, where the token or the session is what establishes tenancy |
 
+### Fixed 2026-08-22 — the waiter could not pick a table (reported from the phone)
+
+The waiter's New Order screen showed an empty "Choose a Table" dropdown. It was calling
+`GET /app/tables`, which is **owner/manager only by design** — that response carries each table's
+`url`, and the URL *is* the credential a phone presents to become that table. So the screen was
+built on an endpoint the role it exists for can never reach, and a 403 in a `useQuery` with no
+error branch renders as an empty list.
+
+| Bug | Severity | Status | Notes |
+|---|---|---|---|
+| A waiter could not select a table, so no order could be placed | **High** (feature unusable) | ✅ fixed | New `GET /app/tables/selectable`: `id`, `label`, `zone`, `seats`, `assignedWaiterId`, ACTIVE tables only, **no token material of any kind** — it never decrypts the cipher. Roles are exactly the roles that may `staff-create` an order (OWNER, MANAGER, WAITER) and the route comment says they must stay in step. It sits on its own small router mounted at the same path *before* the admin one, so the blanket `requireRestaurantAdmin` on `tableRouter` is untouched — adding an exception inside it would have replaced one guard covering eight routes with eight guards to remember. Five tests in `table-security.test.ts` (Tbl-06) pin the projection, the roles, the inactive filter and tenant scoping |
+| A waiter saw an empty menu on the same screen | **High** | ✅ fixed | `GET /app/menu/items` already allowed every staff role, but `GET /app/menu/categories` was owner/manager — and the grid renders items *inside* categories, so the pane was blank. Reading the category list is now the same role set as reading items. **This is a deliberate widening of an admin boundary**: category names are strictly less sensitive than the items they group, and withholding them while handing over the items protected nothing. Every category *change* is still owner/manager. `admin-surface.test.ts` moved that route out of the admin list and pins the new boundary explicitly |
+| Both failures were invisible | Medium | ✅ fixed | The screen had no error or empty state: a 403 produced `undefined` data and an empty `<select>` with no explanation. It now distinguishes loading, request failure, no tables configured, and "every table is assigned to another waiter", and says so in the interface. The menu pane does the same |
+
 ### Open
 
 | Bug | Severity | Status | Notes |
 |---|---|---|---|
 | A cashier could open `/admin/*` in the browser | Medium | ✅ **fixed 2026-08-12** | The client route guard checked only platform-versus-restaurant; the per-surface guards from Step 7b were lost in the redesign, so typing `/admin/menu` rendered the admin interface to any signed-in staff member. **Nothing leaked** — every admin route is `requireRestaurantAdmin` and returned 403, which is why the screen was empty. Fixed with a single `mayVisit()` table in `lib/roles.ts` consulted by both the route guard and the sidebar, so a link can never appear for a surface the guard refuses. The sidebar was also offering Kitchen Display to cashiers. New `tests/security/admin-surface.test.ts` walks all 19 admin endpoints as cashier, kitchen and platform admin |
+| The cashier can open the POS screen but can never submit | Medium | **open — needs a product decision (raised 2026-08-22)** | `WaiterPOS` is mounted at both `/waiter/pos` and `/cashier/pos`, but `POST /app/orders/staff-create` is `WAITER | MANAGER | OWNER` — a cashier building a cart there gets a 403 on send, and now also a 403 on the table picker, which deliberately mirrors the same three roles. Either cashiers should be able to take an order at the till (add `Role.CASHIER` to both, one line each) or `/cashier/pos` should not exist. Not guessed at, because "who may create an order" is a product decision |
 | The `/customers/*` module is not safe to ship as written | **High** | **open — needs a product decision (raised 2026-08-22)** | Found while sweeping for the `sanitizeFilter` defect; **not changed, because it is a security and data-model decision, not an implementation detail.** Three things: (1) `GET /customers/orders` authenticates with `x-customer-token`, which is the customer's **Mongo `_id`** — a bearer credential that is not random, not hashed, never expires and cannot be revoked; (2) the same route then queries `OrderModel.find({ customerPhone })` with no tenant filter, so it both intends to cross tenants and, because of the tenant guard, throws `TenantScopeError` → 500 today; (3) `GET /customers/mock-otps` returns live OTP codes to any OWNER, which is the one thing `CLAUDE.md` says never to do with an OTP. Suggested direction: a real signed customer token with an expiry, orders scoped per restaurant, and the mock-OTP screen behind a dev-only flag |
 | Kitchen staff cannot edit stock | Medium | **open — needs a product decision** | The request on 2026-08-12 was "editable by admin **or kitchen staff**", but the chosen location was the admin item editor, which lives behind `/admin` and kitchen roles cannot reach. So today only OWNER and MANAGER can set a portion count. The fix is small and in two parts: add `Role.KITCHEN` to the item-update route (or a narrower stock-only route, which is safer — the full editor also changes prices), and give the kitchen surface a screen that reaches it. `stock-security.test.ts` pins the current behaviour with a test named for this gap, so flipping it is deliberate |
 
@@ -959,7 +977,7 @@ Mongoose 8.24.2 source, not from memory.
 
 ## 18. Tests
 
-Last run: **2026-08-22 — 282 API + 43 shared passed, 0 failed.** Security suite: **210 across 11
+Last run: **2026-08-22 — 288 API + 43 shared passed, 0 failed.** Security suite: **216 across 11
 files.**
 
 ```
@@ -983,7 +1001,8 @@ files.**
 @rw/api     SECURITY tenant isolation 16 passed  (Sec-01/02/03/05/06 + all three guard layers)
 @rw/api     SECURITY rbac + audit      9 passed  (Sec-07, Sec-08, append-only audit)
 @rw/api     SECURITY platform admin   18 passed  (cross-tenant boundary, provisioning, suspension)
-@rw/api     SECURITY table + token    27 passed  (Tbl-01..05, session forgery, QR/CSV, crypto)
+@rw/api     SECURITY table + token    32 passed  (Tbl-01..06, session forgery, QR/CSV, crypto,
+                                                  + the picker that must never carry the URL)
 @rw/api     SECURITY menu             27 passed  (Sec-01 on the real model, RBAC, image URLs)
 @rw/api     SECURITY orders           40 passed  (Sec-04/06/09, Ord-01..05, Cash-01..03, races,
                                                   + the idempotency index itself)
@@ -1201,6 +1220,28 @@ hatch even though the tenant was already established two lines above; it is now
 lookups are the legitimate ones — in each of them the token or the session is what establishes
 tenancy, so there is no tenant to scope by yet.
 
+**The waiter alert is its own sound now**, on the product owner's request: `playWaiterCallAlert()`
+in `lib/audio.ts` — a two-tone pattern repeated three times, 2.36 s of sound, instead of the
+150 ms blip the cashier screen uses for cash-pending. A waiter is metres from the screen in a
+noisy room; a blip is missed. It also carries a re-trigger guard, because the socket event and
+the ten-second poll both report the same call and two overlapping copies of a 2.4-second alert
+are noise — the `Waiter.tsx` socket handler now only triggers the refetch, so one place decides
+what is new and a call can no longer announce itself (or toast) twice. Verified by stubbing Web
+Audio and reading back the schedule: six notes, 0.00 s → 2.36 s, suppressed on re-entry, sounding
+again for a genuinely new call.
+
+**The waiter could not pick a table** (reported from the phone, same session). The New Order
+screen called `GET /app/tables` — owner/manager only *by design*, because that response carries
+each table's `url` and the URL is the credential. A waiter got 403, and a `useQuery` with no error
+branch renders 403 as an empty dropdown. Fixed with a new `GET /app/tables/selectable` that never
+decrypts a token: id, label, zone, seats, assignedWaiterId, ACTIVE only, for exactly the roles that
+may create an order. It is a separate router mounted before the admin one, so the blanket admin
+guard was not touched. The same screen also had an empty menu, because `GET /menu/categories` was
+admin-only while `GET /menu/items` was not — **that boundary was deliberately widened** (reading a
+category name is less sensitive than reading the items in it) and `admin-surface.test.ts` now pins
+the new line. Both failures were invisible, so the screen gained real loading, error and empty
+states.
+
 **Raised, deliberately not changed:** the `/customers/*` module is not safe to ship as written —
 the customer's Mongo `_id` is used as a bearer token, `GET /customers/orders` is cross-tenant by
 construction (and 500s today on the tenant guard), and `GET /customers/mock-otps` hands live OTP
@@ -1209,18 +1250,22 @@ and needs the product owner's call.
 
 **Files changed** — `modules/orders/order.routes.ts`, `modules/public/public.routes.ts`,
 `modules/customers/customer.service.ts`, `modules/menu/menu.service.ts`,
-`modules/orders/order.service.ts`, `scripts/check-indexes.mts`, plus new
+`modules/orders/order.service.ts`, `scripts/check-indexes.mts`, `web/src/lib/audio.ts`,
+`web/src/routes/staff/Waiter.tsx`, `modules/tables/table.routes.ts`,
+`modules/tables/table.service.ts`, `modules/menu/menu.routes.ts`, `app.ts`,
+`web/src/lib/staffApi.ts`, `web/src/routes/staff/WaiterPOS.tsx`, plus new
 `tests/security/waiter-call.test.ts` and `tests/query-operators.test.ts`.
 
-**Tests** — `npm run typecheck`, `npm run lint`, `npm test` (282 API + 43 shared),
-`npm run test:security` (210) and `npm run build` all green. The new waiter-call tests were
+**Tests** — `npm run typecheck`, `npm run lint`, `npm test` (288 API + 43 shared),
+`npm run test:security` (216) and `npm run build` all green. The new waiter-call tests were
 confirmed to fail when the fix is reverted.
 
 **No new index.** The waiter board sorts in memory on purpose: a restaurant has tens of tables,
 and an index on a column that is null for nearly every row would earn nothing. The query shape is
 registered in `scripts/check-indexes.mts` so the next `indexes:check` run reports on it.
 
-**Next action** — decide what to do about the `/customers/*` module (§16 Open).
+**Next action** — two product decisions in §16 Open: whether a cashier may take an order at the
+till (which is what `/cashier/pos` implies), and what to do about the `/customers/*` module.
 
 ---
 

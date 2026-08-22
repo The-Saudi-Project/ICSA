@@ -25,7 +25,7 @@ import {
   TableSessionStatus,
 } from '../../src/modules/tables/tableSession.model.js'
 import { makeRestaurant, makeTenant, makeUser } from '../setup/factories.js'
-import { app, auth, loginAs } from '../setup/http.js'
+import { app, auth, loginAs, type Session } from '../setup/http.js'
 import { clearTestDb, startTestDb, stopTestDb } from '../setup/mongo.js'
 
 /**
@@ -464,5 +464,80 @@ describe('QR and CSV export', () => {
 
     const res = await request(app).get('/api/v1/app/tables/export').set(auth(session))
     expect(res.text).toContain('"Table ""A"", window"')
+  })
+})
+
+/**
+ * The table picker — what an order-taking screen may know about a table.
+ *
+ * A waiter has to name the table they are ordering for, so they need the list.
+ * They must not receive the table *URL*: that string is the credential a phone
+ * presents to become that table, and handing it to every member of waiting staff
+ * would turn a screenshot into a working session. So this list exists separately
+ * from `GET /app/tables`, which stays owner/manager-only.
+ */
+describe('Tbl-06 the table picker never carries the credential', () => {
+  async function tenantWithWaiter(label: string) {
+    const { restaurant, session, table, token } = await makeTable(label)
+    const email = `waiter-${label}-${Math.random().toString(36).slice(2, 7)}@t.test`
+    await makeUser({ restaurant, role: Role.WAITER, email })
+    return { restaurant, admin: session, waiter: await loginAs(email), table, token }
+  }
+
+  const selectable = (session: Session) =>
+    request(app).get('/api/v1/app/tables/selectable').set(auth(session))
+
+  it('lists the tables a waiter may order for, with no token material at all', async () => {
+    const { waiter, table, token } = await tenantWithWaiter('W1')
+
+    const res = await selectable(waiter)
+
+    expect(res.status).toBe(200)
+    expect(res.body.tables).toHaveLength(1)
+    expect(res.body.tables[0].id).toBe(table.id)
+    expect(res.body.tables[0].label).toBe('W1')
+
+    // The credential, in every form it could take.
+    expect(res.body.tables[0].url).toBeUndefined()
+    expect(JSON.stringify(res.body)).not.toContain(token)
+    expect(JSON.stringify(res.body)).not.toContain('/t/')
+    expect(JSON.stringify(res.body)).not.toContain('tokenHash')
+    expect(JSON.stringify(res.body)).not.toContain('tokenCipher')
+  })
+
+  it('does not open the admin table list to the same waiter', async () => {
+    const { waiter } = await tenantWithWaiter('W2')
+
+    const res = await request(app).get('/api/v1/app/tables').set(auth(waiter))
+    expect(res.status).toBe(403)
+  })
+
+  it('refuses a role that cannot create an order anyway', async () => {
+    const { restaurant } = await makeTable('W3')
+    const email = `cashier-${Math.random().toString(36).slice(2, 7)}@t.test`
+    await makeUser({ restaurant, role: Role.CASHIER, email })
+    const cashier = await loginAs(email)
+
+    expect((await selectable(cashier)).status).toBe(403)
+  })
+
+  it('leaves out a table the restaurant has taken out of service', async () => {
+    const { admin, waiter, table } = await tenantWithWaiter('W4')
+
+    await request(app)
+      .patch(`/api/v1/app/tables/${table.id}`)
+      .set(auth(admin))
+      .send({ status: TableStatus.INACTIVE })
+
+    expect((await selectable(waiter)).body.tables).toEqual([])
+  })
+
+  it('shows a waiter the tables of their own restaurant only', async () => {
+    const mine = await tenantWithWaiter('W5')
+    await makeTable('OTHER')
+
+    const res = await selectable(mine.waiter)
+    expect(res.body.tables).toHaveLength(1)
+    expect(res.body.tables[0].label).toBe('W5')
   })
 })

@@ -75,6 +75,67 @@ export function playSuccessChime() {
   })
 }
 
+interface ToneOptions {
+  /** AudioContext time to start at. */
+  at: number
+  freq: number
+  duration: number
+  peak?: number
+}
+
+/** One shaped note. The attack is fast but not instant, so it does not click. */
+function tone(ctx: AudioContext, { at, freq, duration, peak = 0.32 }: ToneOptions) {
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+
+  osc.type = 'triangle'
+  osc.frequency.setValueAtTime(freq, at)
+
+  gain.gain.setValueAtTime(0, at)
+  gain.gain.linearRampToValueAtTime(peak, at + 0.02)
+  gain.gain.exponentialRampToValueAtTime(0.001, at + duration)
+
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+
+  osc.start(at)
+  osc.stop(at + duration)
+}
+
+/** How long `playWaiterCallAlert` sounds for, in seconds. */
+export const WAITER_CALL_ALERT_SECONDS = 2.4
+
+let waiterAlertSoundingUntil = 0
+
+/**
+ * A table is calling for a waiter — a two-tone pattern repeated three times,
+ * about 2.4 seconds in all.
+ *
+ * Deliberately not `playAlertBeep`. A waiter is moving around a noisy room and
+ * may be several metres from the screen, so a 150 ms blip is simply missed; a
+ * pattern that repeats reads as a summons and survives a burst of background
+ * noise. The falling interval is also different from the kitchen's rising chime,
+ * so the two are never confused from across the floor.
+ *
+ * A second request while the first is still sounding is ignored. The socket
+ * event and the ten-second poll both report the same call, and two overlapping
+ * copies of a 2.4-second alert are noise, not urgency.
+ */
+export function playWaiterCallAlert() {
+  const ctx = getAudioContext()
+  if (ctx.state !== 'running') return
+
+  if (ctx.currentTime < waiterAlertSoundingUntil) return
+  waiterAlertSoundingUntil = ctx.currentTime + WAITER_CALL_ALERT_SECONDS
+
+  const start = ctx.currentTime
+  for (let repeat = 0; repeat < 3; repeat += 1) {
+    const at = start + repeat * 0.8
+    tone(ctx, { at, freq: 987.77, duration: 0.34 }) // B5
+    tone(ctx, { at: at + 0.3, freq: 739.99, duration: 0.46 }) // F#5
+  }
+}
+
 /** Plays a short distinct beep (e.g. for Cashier Cash Pending) */
 export function playAlertBeep() {
   const ctx = getAudioContext()

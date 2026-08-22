@@ -81,6 +81,42 @@ export async function listTables(): Promise<TableView[]> {
   return tables.map(toView)
 }
 
+/** What an order-taking screen needs to know about a table, and nothing else. */
+export interface TablePickerView {
+  id: string
+  label: string
+  zone?: string | null
+  seats?: number | null
+  assignedWaiterId: string | null
+}
+
+/**
+ * The tables a waiter may send an order to.
+ *
+ * Deliberately **not** `TableView`. That view carries `url`, and the URL *is*
+ * the table credential — anyone holding it can open a customer session on that
+ * table from any phone. A waiter needs to know which tables exist, not how to
+ * become one, so this projection never decrypts the token and never returns it.
+ * That is what makes it safe to grant a role that `GET /app/tables` refuses.
+ *
+ * Inactive tables are left out: the restaurant has taken them out of service, so
+ * they must not be orderable.
+ */
+export async function listSelectableTables(): Promise<TablePickerView[]> {
+  const tables = await tenantRepo(TableModel).find(
+    { status: TableStatus.ACTIVE },
+    { sort: { label: 1 }, select: 'label zone seats assignedWaiterId' },
+  )
+
+  return tables.map((table) => ({
+    id: table._id.toString(),
+    label: table.label,
+    zone: table.zone,
+    seats: table.seats,
+    assignedWaiterId: table.assignedWaiterId ? table.assignedWaiterId.toString() : null,
+  }))
+}
+
 export async function createTable(input: {
   label: string
   zone?: string

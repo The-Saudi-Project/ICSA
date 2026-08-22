@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { fetchTables, fetchMenuItems, fetchCategories, staffCreateOrder, getStaffUser } from '../../lib/staffApi.js'
+import { fetchSelectableTables, fetchMenuItems, fetchCategories, staffCreateOrder, getStaffUser } from '../../lib/staffApi.js'
 import { Card } from '../../components/ui/Card.js'
 import { money } from '../../lib/format.js'
 import { PaymentMethod } from '@rw/shared'
@@ -9,15 +9,23 @@ import { PaymentMethod } from '@rw/shared'
 export default function WaiterPOS() {
   const navigate = useNavigate()
   
-  const { data: tablesData } = useQuery({ queryKey: ['tables'], queryFn: fetchTables })
-  const { data: menuData } = useQuery({ queryKey: ['menuItems'], queryFn: fetchMenuItems })
-  const { data: categoriesData } = useQuery({ queryKey: ['categories'], queryFn: fetchCategories })
+  // `fetchSelectableTables`, not `fetchTables`: the admin list carries each
+  // table's URL, which is its credential, so the server refuses it to the very
+  // role this screen is for. Its own query key too — the two responses are
+  // different shapes and must not share a cache entry.
+  const tablesQuery = useQuery({ queryKey: ['tables', 'selectable'], queryFn: fetchSelectableTables })
+  const menuQuery = useQuery({ queryKey: ['menuItems'], queryFn: fetchMenuItems })
+  const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: fetchCategories })
 
   const user = getStaffUser()
-  const allTables = tablesData?.tables ?? []
+  const allTables = tablesQuery.data?.tables ?? []
   const tables = allTables.filter(t => !t.assignedWaiterId || t.assignedWaiterId === user?.id)
-  const items = menuData?.items ?? []
-  const categories = categoriesData?.categories ?? []
+  const items = menuQuery.data?.items ?? []
+  const categories = categoriesQuery.data?.categories ?? []
+
+  const menuFailed = menuQuery.isError || categoriesQuery.isError
+  const menuLoaded = !menuQuery.isPending && !categoriesQuery.isPending && !menuFailed
+  const tablesLoaded = !tablesQuery.isPending && !tablesQuery.isError
 
   const [selectedTableId, setSelectedTableId] = useState<string>('')
   const [cart, setCart] = useState<Record<string, number>>({})
@@ -64,6 +72,24 @@ export default function WaiterPOS() {
            <Link to="/waiter" className="text-accent font-bold hover:underline">Back to Dashboard</Link>
         </div>
 
+        {menuFailed && (
+          <Card variant="glass" className="p-6 mb-8">
+            <p className="font-bold text-status-danger">The menu could not be loaded.</p>
+            <p className="text-ink-soft mt-1">
+              {(menuQuery.error ?? categoriesQuery.error)?.message ?? 'Please try again.'}
+            </p>
+          </Card>
+        )}
+
+        {menuLoaded && activeItems.length === 0 && (
+          <Card variant="glass" className="p-6 mb-8">
+            <p className="font-bold text-ink">Nothing on the menu is available right now.</p>
+            <p className="text-ink-soft mt-1">
+              An owner or manager adds items and marks them available under Admin → Menu.
+            </p>
+          </Card>
+        )}
+
         {activeCategories.map(cat => {
           const catItems = activeItems.filter(i => i.categoryId === cat.id).sort((a, b) => a.sortOrder - b.sortOrder)
           if (catItems.length === 0) return null
@@ -98,15 +124,34 @@ export default function WaiterPOS() {
          <div className="mb-6">
            <label className="block text-sm font-bold text-ink-faint uppercase tracking-widest mb-2">Select Table</label>
            <select 
-             className="w-full bg-ground border-2 border-border rounded-xl p-3 text-ink font-bold focus:border-accent focus:ring-0"
+             className="w-full bg-ground border-2 border-border rounded-xl p-3 text-ink font-bold focus:border-accent focus:ring-0 disabled:opacity-60"
              value={selectedTableId}
              onChange={e => setSelectedTableId(e.target.value)}
+             disabled={tables.length === 0}
            >
-             <option value="">-- Choose a Table --</option>
+             <option value="">
+               {tablesQuery.isPending ? 'Loading tables…' : tables.length === 0 ? '-- No table available --' : '-- Choose a Table --'}
+             </option>
              {tables.map(t => (
                <option key={t.id} value={t.id}>Table {t.label}</option>
              ))}
            </select>
+
+           {tablesQuery.isError && (
+             <p className="mt-2 text-sm font-bold text-status-danger">
+               The table list could not be loaded. {tablesQuery.error?.message}
+             </p>
+           )}
+           {tablesLoaded && allTables.length === 0 && (
+             <p className="mt-2 text-sm text-ink-soft">
+               No active tables yet. An owner or manager creates them under Admin → Tables.
+             </p>
+           )}
+           {tablesLoaded && allTables.length > 0 && tables.length === 0 && (
+             <p className="mt-2 text-sm text-ink-soft">
+               Every table is assigned to another waiter.
+             </p>
+           )}
          </div>
 
          <div className="flex-1 overflow-y-auto mb-6">
