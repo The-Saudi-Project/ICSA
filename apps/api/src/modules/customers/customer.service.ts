@@ -31,13 +31,29 @@ export async function verifyOtp(phone: string, code: string): Promise<{ token: s
   otp.usedAt = new Date()
   await otp.save()
 
-  // Find or create customer atomically to prevent duplicate key race conditions
-  const customer = await CustomerModel.findOneAndUpdate(
-    { phone },
-    { $setOnInsert: { phone } },
-    { upsert: true, new: true }
-  )  
+  // Find or create customer — Mongoose 8 types findOneAndUpdate as T|null even
+  // with upsert:true, so we use a two-step pattern that is guaranteed to return
+  // a document and avoids the duplicate-key race condition.
+  let customer = await CustomerModel.findOne({ phone })
+  if (!customer) {
+    try {
+      customer = await CustomerModel.create({ phone })
+    } catch (err: unknown) {
+      // Another request beat us to the insert (duplicate key). Fetch the winner.
+      if (typeof err === 'object' && err !== null && (err as { code?: number }).code === 11000) {
+        customer = await CustomerModel.findOne({ phone })
+      } else {
+        throw err
+      }
+    }
+  }
+
+  if (!customer) {
+    throw new Error('Failed to create or find customer record')
+  }
+
   return { token: customer._id.toString() }
+
 }
 
 export async function getMockOtps() {
