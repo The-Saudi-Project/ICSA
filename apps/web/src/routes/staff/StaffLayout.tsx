@@ -2,8 +2,9 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router'
 import { getStaffUser, logout } from '../../lib/staffApi.js'
 import { mayVisit } from '../../lib/roles.js'
 import { Button } from '../../components/ui/Button.js'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from '../../lib/theme.js'
+import { unlockAudio } from '../../lib/audio.js'
 
 interface NavItem {
   to: string
@@ -25,6 +26,20 @@ export default function StaffLayout() {
   const { t, locale, setLocale } = useI18n()
 
   const isPlatformAdmin = user?.role === 'PLATFORM_ADMIN'
+
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      unlockAudio().catch(() => {})
+      document.removeEventListener('pointerdown', handleFirstInteraction)
+      document.removeEventListener('keydown', handleFirstInteraction)
+    }
+    document.addEventListener('pointerdown', handleFirstInteraction)
+    document.addEventListener('keydown', handleFirstInteraction)
+    return () => {
+      document.removeEventListener('pointerdown', handleFirstInteraction)
+      document.removeEventListener('keydown', handleFirstInteraction)
+    }
+  }, [])
 
   async function signOut() {
     await logout()

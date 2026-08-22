@@ -146,19 +146,21 @@ export default function Waiter() {
              <p className="text-xl font-medium text-ink-soft mt-3">{t('activeTickets') ?? 'Active Tickets'}: <strong className="text-ink font-bold">{orders.length}</strong></p>
            </div>
            
-           <div className="flex items-center gap-4">
-             <SoundToggle />
+           <div className="flex flex-wrap items-center gap-3 sm:gap-4 w-full md:w-auto mt-4 md:mt-0">
+             <div className="shrink-0">
+               <SoundToggle />
+             </div>
              <Link
                 to="/waiter/pos"
-                className="bg-accent hover:bg-accent-bright text-white rounded-2xl px-8 py-4 font-black shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all uppercase tracking-widest text-sm flex items-center gap-2"
+                className="flex-1 md:flex-none justify-center bg-accent hover:bg-accent-bright text-white rounded-2xl px-6 sm:px-8 py-3.5 sm:py-4 font-black shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all uppercase tracking-widest text-sm flex items-center gap-2 whitespace-nowrap"
              >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 {t('newOrder') ?? 'New Order'}
              </Link>
-             <div className="flex gap-4">
-                <div className="bg-surface-strong/80 backdrop-blur-md rounded-2xl px-6 py-3 border border-border/50 shadow-sm flex items-center gap-3">
-                   <div className="w-3 h-3 rounded-full bg-status-success animate-pulse shadow-[0_0_10px_var(--color-status-success)]"></div>
-                   <span className="font-bold text-ink text-sm tracking-wider uppercase">{(t('ready') ?? 'Ready').toUpperCase()}: {orders.filter(o => o.status === OrderStatus.READY).length}</span>
+             <div className="flex-1 md:flex-none min-w-[130px]">
+                <div className="bg-surface-strong/80 backdrop-blur-md rounded-2xl px-4 sm:px-6 py-3.5 sm:py-4 border border-border/50 shadow-sm flex items-center justify-center gap-3 h-full w-full">
+                   <div className="w-3 h-3 rounded-full bg-status-success animate-pulse shadow-[0_0_10px_var(--color-status-success)] shrink-0"></div>
+                   <span className="font-bold text-ink text-sm tracking-wider uppercase whitespace-nowrap">{(t('ready') ?? 'Ready').toUpperCase()}: {orders.filter(o => o.status === OrderStatus.READY).length}</span>
                 </div>
              </div>
            </div>
