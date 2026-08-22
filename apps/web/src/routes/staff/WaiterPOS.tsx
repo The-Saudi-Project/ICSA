@@ -33,6 +33,18 @@ export default function WaiterPOS() {
   const activeCategories = useMemo(() => categories.filter(c => c.isActive).sort((a, b) => a.sortOrder - b.sortOrder), [categories])
   const activeItems = useMemo(() => items.filter(i => i.isActive && i.isAvailable), [items])
 
+  /** Only categories that have something to show; an empty heading helps nobody. */
+  const groups = useMemo(
+    () =>
+      activeCategories
+        .map(cat => ({
+          cat,
+          catItems: activeItems.filter(i => i.categoryId === cat.id).sort((a, b) => a.sortOrder - b.sortOrder),
+        }))
+        .filter(g => g.catItems.length > 0),
+    [activeCategories, activeItems],
+  )
+
   const subtotal = useMemo(() => {
     let sum = 0
     for (const [id, qty] of Object.entries(cart)) {
@@ -64,9 +76,9 @@ export default function WaiterPOS() {
   })
 
   return (
-    <div className="min-h-dvh bg-ground flex flex-col md:flex-row h-dvh overflow-hidden">
-      {/* Left side: Menu */}
-      <div className="flex-1 overflow-y-auto p-6 md:p-10 relative">
+    <div className="min-h-dvh bg-ground flex flex-col md:flex-row md:h-dvh md:overflow-hidden">
+      {/* Menu — above the cart on a phone, beside it from md up */}
+      <div className="flex-1 md:overflow-y-auto p-6 md:p-10 relative">
         <div className="flex justify-between items-center mb-8">
            <h1 className="text-4xl font-black text-ink tracking-tight">New Order</h1>
            <Link to="/waiter" className="text-accent font-bold hover:underline">Back to Dashboard</Link>
@@ -81,19 +93,30 @@ export default function WaiterPOS() {
           </Card>
         )}
 
-        {menuLoaded && activeItems.length === 0 && (
+        {menuLoaded && groups.length === 0 && (
           <Card variant="glass" className="p-6 mb-8">
-            <p className="font-bold text-ink">Nothing on the menu is available right now.</p>
-            <p className="text-ink-soft mt-1">
-              An owner or manager adds items and marks them available under Admin → Menu.
-            </p>
+            {activeItems.length === 0 ? (
+              <>
+                <p className="font-bold text-ink">Nothing on the menu is available right now.</p>
+                <p className="text-ink-soft mt-1">
+                  An owner or manager adds items and marks them available under Admin → Menu.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-bold text-ink">
+                  {activeItems.length} item{activeItems.length === 1 ? ' is' : 's are'} available, but every
+                  category holding them is switched off.
+                </p>
+                <p className="text-ink-soft mt-1">
+                  An owner or manager switches a category back on under Admin → Menu.
+                </p>
+              </>
+            )}
           </Card>
         )}
 
-        {activeCategories.map(cat => {
-          const catItems = activeItems.filter(i => i.categoryId === cat.id).sort((a, b) => a.sortOrder - b.sortOrder)
-          if (catItems.length === 0) return null
-
+        {groups.map(({ cat, catItems }) => {
           return (
             <div key={cat.id} className="mb-10">
               <h2 className="text-2xl font-bold text-ink mb-4">{cat.name.en}</h2>
@@ -118,7 +141,7 @@ export default function WaiterPOS() {
       </div>
 
       {/* Right side: Cart & Checkout */}
-      <div className="w-full md:w-[400px] border-l border-border bg-surface-strong p-6 flex flex-col h-full z-10 shadow-2xl">
+      <div className="w-full md:w-[400px] border-t md:border-t-0 md:border-s border-border bg-surface-strong p-6 flex flex-col md:h-full z-10 shadow-2xl">
          <h2 className="text-2xl font-black text-ink mb-6 tracking-tight">Order Details</h2>
 
          <div className="mb-6">
@@ -154,7 +177,7 @@ export default function WaiterPOS() {
            )}
          </div>
 
-         <div className="flex-1 overflow-y-auto mb-6">
+         <div className="md:flex-1 md:overflow-y-auto mb-6">
            <label className="block text-sm font-bold text-ink-faint uppercase tracking-widest mb-4">Items</label>
            {Object.keys(cart).length === 0 ? (
              <p className="text-ink-soft italic">No items added.</p>

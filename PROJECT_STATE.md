@@ -945,6 +945,7 @@ error branch renders as an empty list.
 |---|---|---|---|
 | A waiter could not select a table, so no order could be placed | **High** (feature unusable) | ✅ fixed | New `GET /app/tables/selectable`: `id`, `label`, `zone`, `seats`, `assignedWaiterId`, ACTIVE tables only, **no token material of any kind** — it never decrypts the cipher. Roles are exactly the roles that may `staff-create` an order (OWNER, MANAGER, WAITER) and the route comment says they must stay in step. It sits on its own small router mounted at the same path *before* the admin one, so the blanket `requireRestaurantAdmin` on `tableRouter` is untouched — adding an exception inside it would have replaced one guard covering eight routes with eight guards to remember. Five tests in `table-security.test.ts` (Tbl-06) pin the projection, the roles, the inactive filter and tenant scoping |
 | A waiter saw an empty menu on the same screen | **High** | ✅ fixed | `GET /app/menu/items` already allowed every staff role, but `GET /app/menu/categories` was owner/manager — and the grid renders items *inside* categories, so the pane was blank. Reading the category list is now the same role set as reading items. **This is a deliberate widening of an admin boundary**: category names are strictly less sensitive than the items they group, and withholding them while handing over the items protected nothing. Every category *change* is still owner/manager. `admin-surface.test.ts` moved that route out of the admin list and pins the new boundary explicitly |
+| The whole menu pane had zero height on a phone | **High** (screen unusable on the device it is for) | ✅ fixed | Reported after the two fixes above: the table dropdown worked, the items never appeared. Nothing to do with data — the pane's own "New Order" heading renders unconditionally and was missing too. The container was `flex-col h-dvh overflow-hidden` and the cart pane was `h-full`, so when the panes stack, the cart resolves to the full 100dvh and the menu, being `flex:1` with a 0 basis, shrinks to **0px**. It only ever worked at `md:` and above, where the row layout makes `h-full` mean "as tall as the row". The fixed-height, two-scroller arrangement is now `md:`-only and the phone simply scrolls. Confirmed against the built stylesheet: `h-full` compiles to `height:100%`, `h-dvh` to `height:100dvh`, `flex-1` to `flex:1`. No other screen uses that pattern — the rest all use `min-h-dvh` |
 | Both failures were invisible | Medium | ✅ fixed | The screen had no error or empty state: a 403 produced `undefined` data and an empty `<select>` with no explanation. It now distinguishes loading, request failure, no tables configured, and "every table is assigned to another waiter", and says so in the interface. The menu pane does the same |
 
 ### Open
@@ -1241,6 +1242,13 @@ admin-only while `GET /menu/items` was not — **that boundary was deliberately 
 category name is less sensitive than reading the items in it) and `admin-surface.test.ts` now pins
 the new line. Both failures were invisible, so the screen gained real loading, error and empty
 states.
+
+**And then the items still did not show** — a layout bug, not a data one. `WaiterPOS` wrapped its
+two panes in `flex-col h-dvh overflow-hidden` and gave the cart pane `h-full`. Stacked on a phone
+that makes the cart exactly one viewport tall, leaving the `flex:1` menu pane 0px. The screen had
+only ever worked side-by-side. The fixed-height pair is now `md:` and up; below that the panes
+stack and the page scrolls. The menu pane also gained the one empty state it was still missing:
+items that are available but whose category is switched off used to render as a blank pane.
 
 **Raised, deliberately not changed:** the `/customers/*` module is not safe to ship as written —
 the customer's Mongo `_id` is used as a bearer token, `GET /customers/orders` is cross-tenant by
